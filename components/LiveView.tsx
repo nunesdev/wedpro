@@ -75,7 +75,7 @@ export default function LiveView({
                     {layout === 'detailed' && (
                       <p className="text-xs text-zinc-400 mt-0.5 font-medium">
                         Base: {block.duration}m 
-                        {hasDelay && <span className="text-amber-500 ml-1.5 bg-amber-500/10 px-1.5 py-0.5 rounded">(+{block.offset}m extra)</span>}
+                        {hasDelay && <span className="text-amber-500 ml-1.5 bg-amber-500/10 px-1.5 py-0.5 rounded">(+{block.time_offset}m extra)</span>}
                         {isPast && <span className="text-zinc-500 ml-1.5 font-normal">(Encerrado)</span>}
                       </p>
                     )}
