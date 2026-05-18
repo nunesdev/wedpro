@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ThemeMode } from '@/types';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -10,6 +11,7 @@ interface ConfirmModalProps {
   theme: ThemeMode;
   confirmLabel?: string;
   cancelLabel?: string;
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,6 +23,7 @@ export default function ConfirmModal({
   theme,
   confirmLabel = 'Continuar',
   cancelLabel = 'Cancelar',
+  loading = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -37,8 +40,9 @@ export default function ConfirmModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer disabled:cursor-not-allowed"
         onClick={onCancel}
+        disabled={loading}
         aria-label="Fechar"
       />
       <div
@@ -61,7 +65,8 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed ${
               isDark
                 ? 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
                 : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-50'
@@ -72,9 +77,10 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition active:scale-[0.98]"
+            disabled={loading}
+            className="px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 min-w-[7rem] cursor-pointer disabled:cursor-not-allowed"
           >
-            {confirmLabel}
+            {loading ? <LoadingSpinner size="sm" className="text-white" /> : confirmLabel}
           </button>
         </div>
       </div>

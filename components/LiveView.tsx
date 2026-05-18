@@ -1,15 +1,19 @@
 'use client';
 
 import { CalculatedBlock, ThemeMode, LayoutMode } from '@/types';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import OffsetDropdown, { type OffsetSelectValue } from '@/components/OffsetDropdown';
+import { PlayIcon } from '@/components/icons';
 
 interface LiveViewProps {
   theme: ThemeMode;
   layout: LayoutMode;
   baseTime: string;
   timelineData: CalculatedBlock[];
-  onAdjustOffset: (id: string, minutes: number) => void;
+  onAdjustOffset: (id: string, value: OffsetSelectValue) => void | Promise<void>;
   onStartBlockNow: (id: string) => void;
-  currentBlockIndex: number; // <-- Nova Prop recebida
+  currentBlockIndex: number;
+  isPending: (key: string) => boolean;
 }
 
 export default function LiveView({
@@ -20,6 +24,7 @@ export default function LiveView({
   onAdjustOffset,
   onStartBlockNow,
   currentBlockIndex,
+  isPending,
 }: LiveViewProps) {
   return (
     <div className={`p-4 sm:p-6 rounded-xl border max-w-4xl mx-auto ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
@@ -41,6 +46,8 @@ export default function LiveView({
           const isPast = index < currentBlockIndex;
           const isActive = index === currentBlockIndex;
           const hasDelay = block.time_offset > 0;
+          const isStarting = isPending(`start:${block.id}`);
+          const isAdjusting = isPending(`adjust:${block.id}`);
           
           return (
             <div 
@@ -83,45 +90,26 @@ export default function LiveView({
 
                 {/* Lado Direito: Modificadores de Tempo */}
                 {layout === 'detailed' ? (
-                  <div className="flex items-center gap-1.5 justify-end border-t md:border-t-0 pt-3 md:pt-0 border-zinc-800/40 w-full md:w-auto flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-2 justify-end border-t md:border-t-0 pt-3 md:pt-0 border-zinc-800/40 w-full md:w-auto">
                     
-                    {/* BOTÃO PLAY (Esconde ou desativa se for do passado) */}
-                    <button 
-                      onClick={() => onStartBlockNow(block.id)}
-                      disabled={isPast || isActive}
-                      className={`w-full sm:w-auto px-3 py-1.5 rounded-md text-xs font-bold flex items-center justify-center gap-1 transition shrink-0 ${
-                        isActive
-                          ? 'bg-emerald-600 text-white cursor-default'
-                          : isPast
-                            ? 'bg-zinc-800/50 text-zinc-600 border border-zinc-800 cursor-not-allowed'
-                            : 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 active:scale-95'
-                      }`}>
-                      <span>{isActive ? '✓' : '▶'}</span> {isActive ? 'Ativo' : 'Iniciar'}
-                    </button>
-
-                    <span className="text-zinc-700 dark:text-zinc-800 mx-1 hidden sm:inline">|</span>
-
-                    {/* AJUSTES MANUAIS (disabled se for passado) */}
-                    <button 
-                      onClick={() => onAdjustOffset(block.id, 5)}
-                      disabled={isPast}
-                      className="flex-1 sm:flex-initial px-2.5 py-1.5 text-xs font-mono font-bold rounded-md border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-zinc-800 transition">
-                      +5m
-                    </button>
-                    <button 
-                      onClick={() => onAdjustOffset(block.id, 15)}
-                      disabled={isPast}
-                      className="flex-1 sm:flex-initial px-2.5 py-1.5 text-xs font-mono font-bold rounded-md border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-zinc-800 transition">
-                      +15m
-                    </button>
-                    {hasDelay && (
-                      <button 
-                        onClick={() => onAdjustOffset(block.id, -block.time_offset)}
-                        disabled={isPast}
-                        className="px-2 py-1.5 text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 rounded-md hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                        Reset
+                    {!isPast && !isActive && (
+                      <button
+                        type="button"
+                        onClick={() => onStartBlockNow(block.id)}
+                        disabled={isStarting}
+                        title="Iniciar bloco"
+                        aria-label="Iniciar bloco"
+                        className="p-2 rounded-md flex items-center justify-center bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 active:scale-95 transition shrink-0 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {isStarting ? <LoadingSpinner size="sm" /> : <PlayIcon />}
                       </button>
                     )}
+
+                    <OffsetDropdown
+                      theme={theme}
+                      disabled={isPast || isAdjusting}
+                      onSelect={(value) => onAdjustOffset(block.id, value)}
+                    />
                   </div>
                 ) : (
                   // Layout Limpo Estilo Aeroporto

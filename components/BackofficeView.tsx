@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Block, ThemeMode } from '@/types';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface BackofficeViewProps {
   theme: ThemeMode;
@@ -11,7 +12,8 @@ interface BackofficeViewProps {
   onAddBlock: (title: string, duration: number) => void;
   onRemoveBlock: (id: string) => void;
   onResetOffsets: () => void;
-  onReorderBlocks: (updatedBlocks: Block[]) => void; // Nova Prop
+  onReorderBlocks: (updatedBlocks: Block[]) => void;
+  isPending: (key: string) => boolean;
 }
 
 export default function BackofficeView({
@@ -23,12 +25,16 @@ export default function BackofficeView({
   onRemoveBlock,
   onResetOffsets,
   onReorderBlocks,
+  isPending,
 }: BackofficeViewProps) {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(15);
-  
-  // Estado para controlar o index do item sendo arrastado
+  const [orderedBlocks, setOrderedBlocks] = useState<Block[]>(blocks);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (draggedIndex === null) setOrderedBlocks(blocks);
+  }, [blocks, draggedIndex]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,17 +56,20 @@ export default function BackofficeView({
     if (draggedIndex === null || draggedIndex === overIndex) return;
 
     // Cria uma cópia e reordena os blocos reativamente
-    const updatedBlocks = [...blocks];
+    const updatedBlocks = [...orderedBlocks];
     const draggedItem = updatedBlocks[draggedIndex];
-    
-    updatedBlocks.splice(draggedIndex, 1); // Remove da posição antiga
-    updatedBlocks.splice(overIndex, 0, draggedItem); // Insere na nova posição
-    
-    setDraggedIndex(overIndex); // Atualiza o index do que está sendo arrastado
-    onReorderBlocks(updatedBlocks); // Notifica o componente pai
+
+    updatedBlocks.splice(draggedIndex, 1);
+    updatedBlocks.splice(overIndex, 0, draggedItem);
+
+    setDraggedIndex(overIndex);
+    setOrderedBlocks(updatedBlocks);
   };
 
   const handleDragEnd = () => {
+    if (draggedIndex !== null) {
+      onReorderBlocks(orderedBlocks);
+    }
     setDraggedIndex(null);
   };
 
@@ -71,21 +80,35 @@ export default function BackofficeView({
           <h2 className="text-lg font-semibold tracking-tight">Grade Horária Original</h2>
           <p className="text-xs text-zinc-400">Monte e ordene o cronograma arrastando os blocos.</p>
         </div>
-        <button onClick={onResetOffsets} className="text-xs text-red-400 hover:text-red-300 self-start sm:self-auto transition">
+        <button
+          type="button"
+          onClick={onResetOffsets}
+          disabled={isPending('resetOffsets')}
+          className="text-xs text-red-400 hover:text-red-300 self-start sm:self-auto transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+        >
+          {isPending('resetOffsets') && <LoadingSpinner size="sm" />}
           Zerar tempos extras live
         </button>
       </div>
       
       <div className="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <label className="text-xs sm:text-sm font-medium text-zinc-400">Âncora de Início:</label>
-        <input 
-          type="time" 
-          value={baseTime} 
-          onChange={(e) => setBaseTime(e.target.value)}
-          className={`w-full sm:w-auto px-3 py-2 rounded-md border text-sm focus:outline-none focus:border-emerald-500 ${
-            theme === 'dark' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300'
-          }`}
-        />
+        <div className="relative w-full sm:w-auto">
+          <input
+            type="time"
+            value={baseTime}
+            onChange={(e) => setBaseTime(e.target.value)}
+            disabled={isPending('baseTime')}
+            className={`w-full sm:w-auto px-3 py-2 rounded-md border text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50 ${
+              theme === 'dark' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300'
+            }`}
+          />
+          {isPending('baseTime') && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2">
+              <LoadingSpinner size="sm" className="text-emerald-500" />
+            </span>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 mb-6">
@@ -108,21 +131,31 @@ export default function BackofficeView({
               theme === 'dark' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300'
             }`}
           />
-          <button type="submit" className="w-1/2 sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium transition active:scale-95">
-            Adicionar
+          <button
+            type="submit"
+            disabled={isPending('addBlock')}
+            className="w-1/2 sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium transition active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isPending('addBlock') ? <LoadingSpinner size="sm" className="text-white" /> : 'Adicionar'}
           </button>
         </div>
       </form>
 
       {/* LISTA COM DRAG AND DROP */}
-      <div className="space-y-2 select-none">
-        {blocks.map((block, index) => {
+      <div className={`space-y-2 select-none relative ${isPending('reorder') ? 'opacity-70' : ''}`}>
+        {isPending('reorder') && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <LoadingSpinner size="md" className="text-emerald-500" />
+          </div>
+        )}
+        {orderedBlocks.map((block, index) => {
           const isDragging = index === draggedIndex;
+          const isRemoving = isPending(`remove:${block.id}`);
 
           return (
             <div 
               key={block.id}
-              draggable
+              draggable={!isPending('reorder')}
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
@@ -145,16 +178,16 @@ export default function BackofficeView({
               
               <div className="flex items-center gap-4 shrink-0 pointer-events-none">
                 <span className="text-zinc-400 font-mono text-xs">{block.duration}m</span>
-                <button 
+                <button
                   type="button"
                   onClick={(e) => {
-                    // Evita disparar qualquer evento do container pai
                     e.stopPropagation();
                     onRemoveBlock(block.id);
-                  }} 
-                  // Forçamos o pointer-events para o botão continuar clicável dentro do container nativo
-                  className="text-zinc-500 hover:text-red-400 transition text-xs pointer-events-auto cursor-pointer p-1">
-                  Remover
+                  }}
+                  disabled={isRemoving}
+                  className="text-zinc-500 hover:text-red-400 transition text-xs pointer-events-auto cursor-pointer disabled:cursor-not-allowed p-1 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {isRemoving ? <LoadingSpinner size="sm" /> : 'Remover'}
                 </button>
               </div>
             </div>

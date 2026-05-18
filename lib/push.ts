@@ -1,7 +1,31 @@
+import { supabase } from '@/lib/supabase';
+
 export interface PushNotificationPayload {
   eventId: string;
   title: string;
   message: string;
+}
+
+export async function unsubscribeWebPush(
+  registration: ServiceWorkerRegistration,
+  eventId: string
+): Promise<void> {
+  const subscription = await registration.pushManager.getSubscription();
+  if (!subscription) return;
+
+  const endpoint = subscription.endpoint;
+
+  await subscription.unsubscribe();
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('endpoint', endpoint);
+
+  if (error) {
+    console.error('Erro ao remover push_subscriptions:', error.message);
+  }
 }
 
 /**

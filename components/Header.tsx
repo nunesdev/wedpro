@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ThemeMode, LayoutMode, ViewMode } from '@/types';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 function LayoutDetailedIcon({ className }: { className?: string }) {
   return (
@@ -25,6 +26,25 @@ function LayoutCleanIcon({ className }: { className?: string }) {
   );
 }
 
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M9 2.25a3.25 3.25 0 0 0-3.25 3.25v2.1c0 .48-.17.95-.48 1.32l-.92 1.15a1.25 1.25 0 0 0 .98 2.03h7.34a1.25 1.25 0 0 0 .98-2.03l-.92-1.15a2.1 2.1 0 0 1-.48-1.32V5.5A3.25 3.25 0 0 0 9 2.25Z"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.25 13.75h3.5M8.25 15.75h1.5"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 interface HeaderProps {
   theme: ThemeMode;
   toggleTheme: () => void;
@@ -32,7 +52,8 @@ interface HeaderProps {
   toggleLayout: () => void;
   view: ViewMode;
   setView: (view: ViewMode) => void;
-  onPermissionGranted?: () => void;
+  onPermissionGranted?: () => void | Promise<void>;
+  onNotificationsDisabled?: () => void | Promise<void>;
 }
 
 export default function Header({
@@ -43,9 +64,11 @@ export default function Header({
   view,
   setView,
   onPermissionGranted,
+  onNotificationsDisabled,
 }: HeaderProps) {
   const [notificationsSupported, setNotificationsSupported] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
@@ -57,22 +80,35 @@ export default function Header({
   }, []);
 
   const handleNotificationsToggle = async () => {
-    if (!('Notification' in window)) return;
+    if (!('Notification' in window) || notificationsLoading) return;
 
     if (notificationsOn) {
-      localStorage.setItem('wedi_notifications', 'false');
-      setNotificationsOn(false);
+      setNotificationsLoading(true);
+      try {
+        await onNotificationsDisabled?.();
+        localStorage.setItem('wedi_notifications', 'false');
+        setNotificationsOn(false);
+      } catch (err) {
+        console.error('Erro ao desativar notificações:', err);
+      } finally {
+        setNotificationsLoading(false);
+      }
       return;
     }
 
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      localStorage.setItem('wedi_notifications', 'true');
-      setNotificationsOn(true);
-      onPermissionGranted?.();
-    } else {
-      localStorage.setItem('wedi_notifications', 'false');
-      setNotificationsOn(false);
+    setNotificationsLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        localStorage.setItem('wedi_notifications', 'true');
+        setNotificationsOn(true);
+        await onPermissionGranted?.();
+      } else {
+        localStorage.setItem('wedi_notifications', 'false');
+        setNotificationsOn(false);
+      }
+    } finally {
+      setNotificationsLoading(false);
     }
   };
 
@@ -98,31 +134,37 @@ export default function Header({
         <div className="flex items-center gap-1  p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
           <button 
             onClick={() => setView('live')} 
-            className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition ${view === 'live' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
+            className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${view === 'live' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
             Live
           </button>
           <button 
             onClick={() => setView('backoffice')} 
-            className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition ${view === 'backoffice' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
+            className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${view === 'backoffice' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
             Backoffice
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           {notificationsSupported && (
-            <label
-              className={`flex items-center gap-2 cursor-pointer select-none text-xs font-medium ${
-                theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600'
+            <div
+              className={`flex items-center gap-1.5 rounded-md border p-1.5 transition ${
+                theme === 'dark'
+                  ? 'border-zinc-700 bg-zinc-900'
+                  : 'border-zinc-300 bg-zinc-50'
               }`}
+              title={notificationsOn ? 'Notificações ativas' : 'Ativar notificações'}
             >
-              <span className="hidden sm:inline">Ativar notificações</span>
+              <BellIcon
+                className={notificationsOn ? 'text-emerald-400 shrink-0' : 'text-zinc-400 shrink-0'}
+              />
               <button
                 type="button"
                 role="switch"
                 aria-checked={notificationsOn}
-                aria-label="Ativar notificações"
+                aria-label={notificationsOn ? 'Desativar notificações' : 'Ativar notificações'}
+                disabled={notificationsLoading}
                 onClick={handleNotificationsToggle}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed ${
                   notificationsOn
                     ? 'bg-emerald-600 border-emerald-500'
                     : theme === 'dark'
@@ -136,7 +178,7 @@ export default function Header({
                   }`}
                 />
               </button>
-            </label>
+            </div>
           )}
 
           {view === 'live' && (
@@ -145,7 +187,7 @@ export default function Header({
               onClick={toggleLayout}
               title={layout === 'detailed' ? 'Layout detalhado' : 'Layout limpo'}
               aria-label={layout === 'detailed' ? 'Layout detalhado (clique para layout limpo)' : 'Layout limpo (clique para layout detalhado)'}
-              className={`p-2 rounded-md border transition ${
+              className={`p-2 rounded-md border transition cursor-pointer ${
                 theme === 'dark'
                   ? 'border-zinc-700 hover:border-zinc-500 bg-zinc-900 text-zinc-300'
                   : 'border-zinc-300 hover:border-zinc-400 bg-zinc-50 text-zinc-600'
@@ -161,7 +203,7 @@ export default function Header({
 
           <button 
             onClick={toggleTheme}
-            className={`p-2 rounded-md border text-xs sm:text-sm ${
+            className={`p-2 rounded-md border text-xs sm:text-sm cursor-pointer ${
               theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-900' : 'border-zinc-200 hover:bg-zinc-100'
             }`}
             aria-label="Alternar tema">

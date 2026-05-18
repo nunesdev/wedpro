@@ -1,18 +1,35 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Block, CalculatedBlock, ThemeMode, LayoutMode, ViewMode } from '@/types';
 import { supabase } from '@/lib/supabase'; // Importação do seu client Supabase
 import Header from '@/components/Header';
 import BackofficeView from '@/components/BackofficeView';
 import LiveView from '@/components/LiveView';
 import ConfirmModal from '@/components/ConfirmModal';
-import { dispatchWebPush } from '@/lib/push';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { ToastProvider, useToast } from '@/components/ToastProvider';
+import type { OffsetSelectValue } from '@/components/OffsetDropdown';
+import { dispatchWebPush, unsubscribeWebPush } from '@/lib/push';
 
 // Substitua pelo UUID gerado na tabela 'events' do seu painel Supabase
 const HARDCODED_EVENT_ID = '560f0e54-c0c2-49d7-8268-896b6fd03816';
 
+function formatDelayLabel(value: number): string {
+  if (value === 60) return '1 hora';
+  return `${value} minutos`;
+}
+
 export default function WediCasa() {
+  return (
+    <ToastProvider>
+      <WediCasaApp />
+    </ToastProvider>
+  );
+}
+
+function WediCasaApp() {
+  const { showToast } = useToast();
   // Configurações Locais de Interface (Mantidas no estado/localStorage local do app)
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [layout, setLayout] = useState<LayoutMode>('detailed');
@@ -24,6 +41,23 @@ export default function WediCasa() {
   const [baseTime, setBaseTime] = useState<string>('16:00');
   const [currentBlockIndex, setCurrentBlockIndex] = useState<number>(-1);
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [pending, setPending] = useState<Set<string>>(new Set());
+
+  const runWithLoading = useCallback(async (key: string, fn: () => Promise<void>) => {
+    setPending((prev) => new Set(prev).add(key));
+    try {
+      await fn();
+    } finally {
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }, []);
+
+  const isPending = useCallback((key: string) => pending.has(key), [pending]);
 
   // 2. CARREGAMENTO INICIAL E ASSINATURA REALTIME (WebSockets)
   useEffect(() => {
@@ -59,30 +93,33 @@ export default function WediCasa() {
     if (savedTheme) setTheme(savedTheme as ThemeMode);
 
     // FUNÇÃO PARA BUSCAR ESTADO ATUAL DO BANCO (Snapshot Inicial)
-    const fetchEventData = async () => {
-      // Busca dados centrais do Evento
-      const { data: event } = await supabase
-        .from('events')
-        .select('base_time, current_block_index')
-        .eq('id', HARDCODED_EVENT_ID)
-        .single();
-      
-      if (event) {
-        setBaseTime(event.base_time);
-        setCurrentBlockIndex(event.current_block_index);
+    const fetchEventData = async (showInitialLoader = false) => {
+      if (showInitialLoader) setInitialLoading(true);
+      try {
+        const { data: event } = await supabase
+          .from('events')
+          .select('base_time, current_block_index')
+          .eq('id', HARDCODED_EVENT_ID)
+          .single();
+
+        if (event) {
+          setBaseTime(event.base_time);
+          setCurrentBlockIndex(event.current_block_index);
+        }
+
+        const { data: fetchedBlocks } = await supabase
+          .from('blocks')
+          .select('*')
+          .eq('event_id', HARDCODED_EVENT_ID)
+          .order('position', { ascending: true });
+
+        if (fetchedBlocks) setBlocks(fetchedBlocks);
+      } finally {
+        if (showInitialLoader) setInitialLoading(false);
       }
-
-      // Busca os blocos associados e ordena por posição do Drag & Drop
-      const { data: fetchedBlocks } = await supabase
-        .from('blocks')
-        .select('*')
-        .eq('event_id', HARDCODED_EVENT_ID)
-        .order('position', { ascending: true });
-
-      if (fetchedBlocks) setBlocks(fetchedBlocks);
     };
 
-    fetchEventData();
+    fetchEventData(true);
 
     // ASSINATURA REALTIME DO CANAL DO EVENTO
     const channel = supabase
@@ -146,93 +183,136 @@ export default function WediCasa() {
 
   // 2. MUTACÕES ASSÍNCRONAS (Updates direcionados ao Supabase)
 
-  const handleSetBaseTime = async (time: string) => {
-    const { error } = await supabase
-      .from('events')
-      .update({ base_time: time })
-      .eq('id', HARDCODED_EVENT_ID);
+  const handleSetBaseTime = (time: string) =>
+    runWithLoading('baseTime', async () => {
+      const { error } = await supabase
+        .from('events')
+        .update({ base_time: time })
+        .eq('id', HARDCODED_EVENT_ID);
 
-    if (!error) {
+      if (error) {
+        showToast('Não foi possível atualizar a hora base', 'error');
+        return;
+      }
+
+      showToast(`Hora base atualizada para ${time}`, 'info');
       dispatchWebPush({
         eventId: HARDCODED_EVENT_ID,
         title: "🕰️ Nova Hora de Início",
-        message: `A hora base do evento foi reprogramada para as ${time}.`
+        message: `A hora base do evento foi reprogramada para as ${time}.`,
       });
-    }
-  };
+    });
 
-  const handleAddBlock = async (title: string, duration: number) => {
-    // A nova posição será o fim da fila atual
-    const nextPosition = blocks.length;
-    
-    await supabase
-      .from('blocks')
-      .insert({
+  const handleAddBlock = (title: string, duration: number) =>
+    runWithLoading('addBlock', async () => {
+      const nextPosition = blocks.length;
+
+      const { error } = await supabase.from('blocks').insert({
         event_id: HARDCODED_EVENT_ID,
         title,
         duration,
         position: nextPosition,
-        time_offset: 0
+        time_offset: 0,
       });
-  };
 
-  const handleRemoveBlock = async (id: string) => {
-    await supabase
-      .from('blocks')
-      .delete()
-      .eq('id', id);
-  };
+      if (error) {
+        showToast('Não foi possível adicionar o bloco', 'error');
+        return;
+      }
 
-  const handleResetOffsets = async () => {
-    // 1. Zera a linha do tempo master do evento
-    await supabase
-      .from('events')
-      .update({ current_block_index: -1 })
-      .eq('id', HARDCODED_EVENT_ID);
-
-    // 2. Zera o offset de todos os blocos do casamento de uma vez só
-    await supabase
-      .from('blocks')
-      .update({ time_offset: 0 })
-      .eq('event_id', HARDCODED_EVENT_ID);
-  };
-
-  const handleAdjustOffset = async (id: string, minutes: number) => {
-  const targetBlock = blocks.find(b => b.id === id);
-  if (!targetBlock) return;
-
-  const { error } = await supabase
-    .from('blocks')
-    .update({ time_offset: targetBlock.time_offset + minutes })
-    .eq('id', id);
-
-  if (!error) {
-    // Alerta de ajuste fino
-    const tipoAjuste = minutes > 0 ? 'atraso' : 'adiantamento';
-    dispatchWebPush({
-      eventId: HARDCODED_EVENT_ID,
-      title: "⏱️ Ajuste no Cronograma",
-      message: `Houve um ${tipoAjuste} de ${Math.abs(minutes)} min no bloco "${targetBlock.title}".`
+      showToast(`Bloco "${title}" adicionado`, 'success');
     });
-  }
-};
 
-  const handleReorderBlocks = async (updatedBlocks: Block[]) => {
-    // Prepara o payload remapeando as novas posições inteiras do array ordenado
-    const payload = updatedBlocks.map((block, index) => ({
-      id: block.id,
-      event_id: HARDCODED_EVENT_ID,
-      title: block.title,
-      duration: block.duration,
-      time_offset: block.time_offset ?? 0,
-      position: index // Nova propriedade de ordenação do Drag and Drop
-    }));
+  const handleRemoveBlock = (id: string) =>
+    runWithLoading(`remove:${id}`, async () => {
+      const block = blocks.find((b) => b.id === id);
+      const { error } = await supabase.from('blocks').delete().eq('id', id);
 
-    // Realiza o Upsert em lote baseado na Primary Key (id)
-    await supabase
-      .from('blocks')
-      .upsert(payload);
-  };
+      if (error) {
+        showToast('Não foi possível remover o bloco', 'error');
+        return;
+      }
+
+      showToast(
+        block ? `Bloco "${block.title}" removido` : 'Bloco removido',
+        'warning'
+      );
+    });
+
+  const handleResetOffsets = () =>
+    runWithLoading('resetOffsets', async () => {
+      const { error: eventError } = await supabase
+        .from('events')
+        .update({ current_block_index: -1 })
+        .eq('id', HARDCODED_EVENT_ID);
+
+      const { error: blocksError } = await supabase
+        .from('blocks')
+        .update({ time_offset: 0 })
+        .eq('event_id', HARDCODED_EVENT_ID);
+
+      if (eventError || blocksError) {
+        showToast('Não foi possível zerar os atrasos', 'error');
+        return;
+      }
+
+      showToast('Tempos extras zerados no cronograma', 'warning');
+    });
+
+  const handleAdjustOffset = (id: string, value: OffsetSelectValue) =>
+    runWithLoading(`adjust:${id}`, async () => {
+      const targetBlock = blocks.find((b) => b.id === id);
+      if (!targetBlock) return;
+
+      const newOffset =
+        value === 'reset' ? 0 : targetBlock.time_offset + value;
+
+      const { error } = await supabase
+        .from('blocks')
+        .update({ time_offset: newOffset })
+        .eq('id', id);
+
+      if (error) {
+        showToast('Não foi possível atualizar o bloco', 'error');
+        return;
+      }
+
+      if (value === 'reset') {
+        showToast(`Atrasos removidos de "${targetBlock.title}"`, 'success');
+        return;
+      }
+
+      showToast(
+        `Atraso de ${formatDelayLabel(value)} em "${targetBlock.title}"`,
+        'info'
+      );
+      dispatchWebPush({
+        eventId: HARDCODED_EVENT_ID,
+        title: "⏱️ Ajuste no Cronograma",
+        message: `Houve um atraso de ${formatDelayLabel(value)} no bloco "${targetBlock.title}".`,
+      });
+    });
+
+  const handleReorderBlocks = (updatedBlocks: Block[]) =>
+    runWithLoading('reorder', async () => {
+      const payload = updatedBlocks.map((block, index) => ({
+        id: block.id,
+        event_id: HARDCODED_EVENT_ID,
+        title: block.title,
+        duration: block.duration,
+        time_offset: block.time_offset ?? 0,
+        position: index,
+      }));
+
+      const { error } = await supabase.from('blocks').upsert(payload);
+
+      if (error) {
+        showToast('Não foi possível reordenar os blocos', 'error');
+        return;
+      }
+
+      showToast('Ordem dos blocos atualizada', 'info');
+    });
 
   // ENGINE DO EFEITO CASCATA NA EXECUÇÃO LIVE
   const executeStartBlockNow = async (targetBlockId: string) => {
@@ -247,7 +327,10 @@ export default function WediCasa() {
     const difference = nowInMinutes - projectedStartInMinutes;
 
     if (targetIndex === 0) {
-      await handleSetBaseTime(nowStr);
+      await supabase
+        .from('events')
+        .update({ base_time: nowStr })
+        .eq('id', HARDCODED_EVENT_ID);
     } else if (difference !== 0) {
       const previousBlock = blocks[targetIndex - 1];
       await supabase
@@ -263,8 +346,26 @@ export default function WediCasa() {
       .eq('id', HARDCODED_EVENT_ID);
   };
 
+  const startBlockWithPush = (targetBlockId: string) => {
+    const targetIndex = blocks.findIndex((b) => b.id === targetBlockId);
+    const nextBlock = blocks[targetIndex];
+
+    return runWithLoading(`start:${targetBlockId}`, async () => {
+      await executeStartBlockNow(targetBlockId);
+
+      if (nextBlock) {
+        showToast(`Bloco "${nextBlock.title}" iniciado`, 'success');
+        dispatchWebPush({
+          eventId: HARDCODED_EVENT_ID,
+          title: "▶️ Bloco Iniciado",
+          message: `Atenção Equipe: O bloco "${nextBlock.title}" começou agora.`,
+        });
+      }
+    });
+  };
+
   const handleStartBlockNow = (targetBlockId: string) => {
-    const targetIndex = blocks.findIndex(b => b.id === targetBlockId);
+    const targetIndex = blocks.findIndex((b) => b.id === targetBlockId);
     if (targetIndex === -1) return;
 
     if (targetIndex > currentBlockIndex) {
@@ -272,17 +373,7 @@ export default function WediCasa() {
       return;
     }
 
-    const nextBlock = blocks[targetIndex];
-
-    // Aciona o utilitário assíncrono (sem o 'await' para não travar a UI visual)
-    dispatchWebPush({
-      eventId: HARDCODED_EVENT_ID,
-      title: "▶️ Bloco Iniciado",
-      message: `Atenção Equipe: O bloco "${nextBlock.title}" começou agora.`
-    });
-
-    executeStartBlockNow(targetBlockId);
-    
+    startBlockWithPush(targetBlockId);
   };
 
   // 3. ENGINES AUXILIARES DE CÁLCULO VISUAL (Calculados em memória em tempo de render)
@@ -328,14 +419,29 @@ export default function WediCasa() {
         toggleLayout={() => setLayout(layout === 'detailed' ? 'clean' : 'detailed')}
         view={view}
         setView={setView}
-        onPermissionGranted={() => {
-          if (swRegistrationRef.current) getPushSubscription(swRegistrationRef.current);
+        onPermissionGranted={async () => {
+          if (swRegistrationRef.current) {
+            await getPushSubscription(swRegistrationRef.current);
+            showToast('Notificações ativadas', 'success');
+          }
+        }}
+        onNotificationsDisabled={async () => {
+          if (swRegistrationRef.current) {
+            await unsubscribeWebPush(swRegistrationRef.current, HARDCODED_EVENT_ID);
+          }
+          showToast('Notificações desativadas', 'warning');
         }}
       />
 
-      <main className="px-4 sm:px-6 mt-6">
+      {initialLoading && (
+        <div className="fixed inset-0 z-[60] flex h-full min-h-screen items-center justify-center bg-white/75 backdrop-blur-md">
+          <LoadingSpinner size="lg" className="text-emerald-500" />
+        </div>
+      )}
+
+      <main className="relative px-4 sm:px-6 mt-6">
         {view === 'backoffice' ? (
-          <BackofficeView 
+          <BackofficeView
             theme={theme}
             baseTime={baseTime}
             setBaseTime={handleSetBaseTime}
@@ -344,9 +450,10 @@ export default function WediCasa() {
             onRemoveBlock={handleRemoveBlock}
             onResetOffsets={handleResetOffsets}
             onReorderBlocks={handleReorderBlocks}
+            isPending={isPending}
           />
         ) : (
-          <LiveView 
+          <LiveView
             theme={theme}
             layout={layout}
             baseTime={baseTime}
@@ -354,6 +461,7 @@ export default function WediCasa() {
             onAdjustOffset={handleAdjustOffset}
             onStartBlockNow={handleStartBlockNow}
             currentBlockIndex={currentBlockIndex}
+            isPending={isPending}
           />
         )}
       </main>
@@ -363,9 +471,11 @@ export default function WediCasa() {
         theme={theme}
         title="⚠️ Iniciar bloco agora?"
         message="Ao iniciar este bloco imediatamente, o(s) bloco(s) anterior(es) será(ão) considerado(s) concluído(s)/cancelado(s) e travado(s). Os horários seguintes mudarão em cascata."
+        loading={confirmStart !== null && isPending(`start:${confirmStart.blockId}`)}
         onConfirm={() => {
-          if (confirmStart) executeStartBlockNow(confirmStart.blockId);
-          setConfirmStart(null);
+          if (confirmStart) {
+            startBlockWithPush(confirmStart.blockId).then(() => setConfirmStart(null));
+          }
         }}
         onCancel={() => setConfirmStart(null)}
       />
