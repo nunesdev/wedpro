@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Block, CalculatedBlock, ThemeMode, LayoutMode, ViewMode } from '@/types';
 import { supabase } from '@/lib/supabase'; // Importação do seu client Supabase
 import Header from '@/components/Header';
@@ -18,6 +18,7 @@ export default function WediCasa() {
   const [layout, setLayout] = useState<LayoutMode>('detailed');
   const [view, setView] = useState<ViewMode>('live');
   const [confirmStart, setConfirmStart] = useState<{ blockId: string } | null>(null);
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   // ESTADOS SINCRONIZADOS COM O SUPABASE
   const [baseTime, setBaseTime] = useState<string>('16:00');
@@ -34,19 +35,19 @@ export default function WediCasa() {
     const supportsServiceWorker = 'serviceWorker' in navigator;
     const supportsPush = 'PushManager' in window;
 
-    // Solicita permissão apenas se o navegador suportar nativamente (Desktop / Android)
-    if (supportsNotifications && window.Notification.permission === 'default') {
-      window.Notification.requestPermission();
-    }
-
-    // 3. Registro do Service Worker e Push Subscription com checagem rígida
+    // Registro do Service Worker e Push Subscription com checagem rígida
     if (supportsServiceWorker && supportsPush) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
           console.log('Service Worker registrado:', registration.scope);
-          
-          // Só tenta gerar o push se a permissão já foi concedida
-          if (supportsNotifications && window.Notification.permission === 'granted') {
+
+          swRegistrationRef.current = registration;
+
+          if (
+            supportsNotifications &&
+            window.Notification.permission === 'granted' &&
+            localStorage.getItem('wedi_notifications') !== 'false'
+          ) {
             getPushSubscription(registration);
           }
         })
@@ -327,6 +328,9 @@ export default function WediCasa() {
         toggleLayout={() => setLayout(layout === 'detailed' ? 'clean' : 'detailed')}
         view={view}
         setView={setView}
+        onPermissionGranted={() => {
+          if (swRegistrationRef.current) getPushSubscription(swRegistrationRef.current);
+        }}
       />
 
       <main className="px-4 sm:px-6 mt-6">

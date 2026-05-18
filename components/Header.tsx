@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ThemeMode, LayoutMode, ViewMode } from '@/types';
 
@@ -32,6 +32,7 @@ interface HeaderProps {
   toggleLayout: () => void;
   view: ViewMode;
   setView: (view: ViewMode) => void;
+  onPermissionGranted?: () => void;
 }
 
 export default function Header({
@@ -41,7 +42,40 @@ export default function Header({
   toggleLayout,
   view,
   setView,
+  onPermissionGranted,
 }: HeaderProps) {
+  const [notificationsSupported, setNotificationsSupported] = useState(false);
+  const [notificationsOn, setNotificationsOn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+
+    setNotificationsSupported(true);
+    const saved = localStorage.getItem('wedi_notifications');
+    const granted = Notification.permission === 'granted';
+    setNotificationsOn(saved === 'true' || (saved !== 'false' && granted));
+  }, []);
+
+  const handleNotificationsToggle = async () => {
+    if (!('Notification' in window)) return;
+
+    if (notificationsOn) {
+      localStorage.setItem('wedi_notifications', 'false');
+      setNotificationsOn(false);
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      localStorage.setItem('wedi_notifications', 'true');
+      setNotificationsOn(true);
+      onPermissionGranted?.();
+    } else {
+      localStorage.setItem('wedi_notifications', 'false');
+      setNotificationsOn(false);
+    }
+  };
+
   return (
     <header className={`border-b px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 sticky top-0 z-50 backdrop-blur-md ${
       theme === 'dark' ? 'border-zinc-800 bg-zinc-950/80 text-zinc-100' : 'border-zinc-200 bg-white/80 text-zinc-900'
@@ -75,6 +109,36 @@ export default function Header({
         </div>
 
         <div className="flex items-center gap-2">
+          {notificationsSupported && (
+            <label
+              className={`flex items-center gap-2 cursor-pointer select-none text-xs font-medium ${
+                theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600'
+              }`}
+            >
+              <span className="hidden sm:inline">Ativar notificações</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={notificationsOn}
+                aria-label="Ativar notificações"
+                onClick={handleNotificationsToggle}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
+                  notificationsOn
+                    ? 'bg-emerald-600 border-emerald-500'
+                    : theme === 'dark'
+                      ? 'bg-zinc-800 border-zinc-700'
+                      : 'bg-zinc-200 border-zinc-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    notificationsOn ? 'translate-x-5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </label>
+          )}
+
           {view === 'live' && (
             <button
               type="button"
