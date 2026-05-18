@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { CalculatedBlock, ThemeMode, LayoutMode } from '@/types';
 
 interface LiveViewProps {
