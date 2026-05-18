@@ -9,8 +9,8 @@ self.addEventListener('push', (event) => {
     
     const options = {
       body: data.body || 'Alteração no cronograma',
-      icon: '/icon-192x192.png',
-      badge: '/icon-192x192.png', // Ícone que aparece na barra de status do Android
+      icon: '/images/icon-192x192.png',
+      badge: '/images/icon-192x192.png', // Ícone que aparece na barra de status do Android
       vibrate: [200, 100, 200],    // Faz o celular vibrar no bolso da cerimonialista
       data: {
         url: data.url || '/'       // URL para onde o usuário vai ao clicar
@@ -18,7 +18,7 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title || 'wedi.casa', options)
+      self.registration.showNotification(data.title || 'wedi.WE PRO', options)
     );
   } catch (err) {
     console.error('Erro ao processar payload do push:', err);
