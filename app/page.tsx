@@ -237,7 +237,7 @@ export default function WediCasa() {
       event_id: HARDCODED_EVENT_ID,
       title: block.title,
       duration: block.duration,
-      time_offset: block.time_offset,
+      time_offset: block.time_offset ?? 0,
       position: index // Nova propriedade de ordenação do Drag and Drop
     }));
 
@@ -304,7 +304,7 @@ export default function WediCasa() {
     
     return blocks.map((block) => {
       const startTimeStr = formatMinutesToTime(currentTotalMinutes);
-      const blockTotalDuration = block.duration + block.time_offset; // Lê a nova propriedade do banco
+      const blockTotalDuration = block.duration + (block.time_offset ?? 0); // Lê a nova propriedade do banco
       currentTotalMinutes += blockTotalDuration;
       const endTimeStr = formatMinutesToTime(currentTotalMinutes);
 

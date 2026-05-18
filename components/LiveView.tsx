@@ -41,7 +41,7 @@ export default function LiveView({
           // MAPEAMENTO DOS ESTADOS DO BLOCO
           const isPast = index < currentBlockIndex;
           const isActive = index === currentBlockIndex;
-          const hasDelay = block.offset > 0;
+          const hasDelay = block.time_offset > 0;
           
           return (
             <div 
@@ -117,7 +117,7 @@ export default function LiveView({
                     </button>
                     {hasDelay && (
                       <button 
-                        onClick={() => onAdjustOffset(block.id, -block.offset)}
+                        onClick={() => onAdjustOffset(block.id, -block.time_offset)}
                         disabled={isPast}
                         className="px-2 py-1.5 text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 rounded-md hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition">
                         Reset

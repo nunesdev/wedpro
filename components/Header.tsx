@@ -1,7 +1,29 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { ThemeMode, LayoutMode, ViewMode } from '@/types';
+
+function LayoutDetailedIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <rect x="1.5" y="2" width="4" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M7.5 3.5h8M7.5 5.5h5.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+      <rect x="1.5" y="7.25" width="4" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M7.5 8.75h8M7.5 10.75h5.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+      <rect x="1.5" y="12.5" width="4" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.25" />
+      <path d="M7.5 14h8M7.5 16h5.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function LayoutCleanIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path d="M2.5 4.5h13M2.5 9h13M2.5 13.5h13" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 interface HeaderProps {
   theme: ThemeMode;
@@ -25,9 +47,14 @@ export default function Header({
       theme === 'dark' ? 'border-zinc-800 bg-zinc-950/80 text-zinc-100' : 'border-zinc-200 bg-white/80 text-zinc-900'
     }`}>
       <div className="flex items-center gap-2 justify-between w-full sm:w-auto">
-        <div className="font-bold text-xl tracking-tight">
-          wedi<span className="text-emerald-500">.casa</span>
-        </div>
+        <Image
+          src="/images/icon-256x256.png"
+          alt="wedi.casa"
+          width={36}
+          height={36}
+          className="rounded-lg"
+          priority
+        />
         <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 sm:inline-block hidden">
           Control Center
         </span>
@@ -43,18 +70,28 @@ export default function Header({
           <button 
             onClick={() => setView('backoffice')} 
             className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition ${view === 'backoffice' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            Estrutura
+            Backoffice
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           {view === 'live' && (
-            <button 
+            <button
+              type="button"
               onClick={toggleLayout}
-              className={`text-xs border rounded-md px-2.5 py-1.5 font-medium transition ${
-                theme === 'dark' ? 'border-zinc-700 hover:border-zinc-500 bg-zinc-900' : 'border-zinc-300 hover:border-zinc-400 bg-zinc-50'
-              }`}>
-              {layout === 'detailed' ? 'Layout: Detalhado' : 'Layout: Limpo'}
+              title={layout === 'detailed' ? 'Layout detalhado' : 'Layout limpo'}
+              aria-label={layout === 'detailed' ? 'Layout detalhado (clique para layout limpo)' : 'Layout limpo (clique para layout detalhado)'}
+              className={`p-2 rounded-md border transition ${
+                theme === 'dark'
+                  ? 'border-zinc-700 hover:border-zinc-500 bg-zinc-900 text-zinc-300'
+                  : 'border-zinc-300 hover:border-zinc-400 bg-zinc-50 text-zinc-600'
+              }`}
+            >
+              {layout === 'detailed' ? (
+                <LayoutDetailedIcon />
+              ) : (
+                <LayoutCleanIcon />
+              )}
             </button>
           )}
 
