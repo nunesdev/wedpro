@@ -8,11 +8,11 @@ export type OffsetSelectValue = number | 'reset';
 
 const OFFSET_OPTIONS: { label: string; value: OffsetSelectValue }[] = [
   { label: 'Remover atrasos', value: 'reset' },
-  { label: '5 minutos', value: 5 },
-  { label: '10 minutos', value: 10 },
-  { label: '15 minutos', value: 15 },
-  { label: '30 minutos', value: 30 },
-  { label: '1 hora', value: 60 },
+  { label: '+ 5 minutos', value: 5 },
+  { label: '+ 10 minutos', value: 10 },
+  { label: '+ 15 minutos', value: 15 },
+  { label: '+ 30 minutos', value: 30 },
+  { label: '+ 1 hora', value: 60 },
 ];
 
 function ChevronDownIcon({ className }: { className?: string }) {
@@ -95,7 +95,7 @@ export default function OffsetDropdown({
               : 'border-zinc-300 bg-zinc-50 text-zinc-700 hover:border-zinc-400 hover:bg-white'
         }`}
       >
-        <span className="truncate">{loading ? 'Aplicando…' : 'Atrasar em…'}</span>
+        <span className="truncate">{loading ? 'Aplicando…' : 'Atrasar esse bloco'}</span>
         {loading ? (
           <LoadingSpinner size="sm" />
         ) : (

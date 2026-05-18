@@ -15,4 +15,4 @@ export interface CalculatedBlock extends Block {
 
 export type ThemeMode = 'light' | 'dark';
 export type LayoutMode = 'detailed' | 'clean';
-export type ViewMode = 'backoffice' | 'live';
+export type ViewMode = 'live' | 'backoffice';

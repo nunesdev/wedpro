@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ThemeMode, LayoutMode, ViewMode } from '@/types';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import HeaderNavMenu from '@/components/HeaderNavMenu';
 
 function LayoutDetailedIcon({ className }: { className?: string }) {
   return (
@@ -113,38 +113,27 @@ export default function Header({
   };
 
   return (
-    <header className={`border-b px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 sticky top-0 z-50 backdrop-blur-md ${
-      theme === 'dark' ? 'border-zinc-800 bg-zinc-950/80 text-zinc-100' : 'border-zinc-200 bg-white/80 text-zinc-900'
-    }`}>
-      <div className="flex items-center gap-2 justify-between w-full sm:w-auto">
-        <Image
-          src="/images/icon-256x256.png"
-          alt="wedi.casa"
-          width={36}
-          height={36}
-          className="rounded-lg"
-          priority
-        />
-        <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 sm:inline-block hidden">
-          Live
-        </span>
-      </div>
-      
-      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 text-sm w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-800">
-        <div className="flex items-center gap-1  p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
-          <button 
-            onClick={() => setView('live')} 
-            className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${view === 'live' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            Live
-          </button>
-          <button 
-            onClick={() => setView('backoffice')} 
-            className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition cursor-pointer ${view === 'backoffice' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>
-            Backoffice
-          </button>
+    <header
+      className={`border-b px-4 sm:px-6 py-4 flex flex-col gap-4 sticky top-0 z-50 backdrop-blur-md ${
+        theme === 'dark'
+          ? 'border-zinc-800 bg-zinc-950/80 text-zinc-100'
+          : 'border-zinc-200 bg-white/80 text-zinc-900'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+          <Image
+            src="/images/icon-256x256.png"
+            alt="wedi.casa"
+            width={36}
+            height={36}
+            className="rounded-lg shrink-0"
+            priority
+          />
+          <HeaderNavMenu theme={theme} />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {notificationsSupported && (
             <div
               className={`flex items-center gap-1.5 rounded-md border p-1.5 transition ${
@@ -155,13 +144,17 @@ export default function Header({
               title={notificationsOn ? 'Notificações ativas' : 'Ativar notificações'}
             >
               <BellIcon
-                className={notificationsOn ? 'text-emerald-400 shrink-0' : 'text-zinc-400 shrink-0'}
+                className={
+                  notificationsOn ? 'text-emerald-400 shrink-0' : 'text-zinc-400 shrink-0'
+                }
               />
               <button
                 type="button"
                 role="switch"
                 aria-checked={notificationsOn}
-                aria-label={notificationsOn ? 'Desativar notificações' : 'Ativar notificações'}
+                aria-label={
+                  notificationsOn ? 'Desativar notificações' : 'Ativar notificações'
+                }
                 disabled={notificationsLoading}
                 onClick={handleNotificationsToggle}
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed ${
@@ -172,11 +165,15 @@ export default function Header({
                       : 'bg-zinc-200 border-zinc-300'
                 }`}
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                    notificationsOn ? 'translate-x-5' : 'translate-x-1'
-                  }`}
-                />
+                {notificationsLoading ? (
+                  <span className="mx-auto h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      notificationsOn ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                )}
               </button>
             </div>
           )}
@@ -186,27 +183,31 @@ export default function Header({
               type="button"
               onClick={toggleLayout}
               title={layout === 'detailed' ? 'Layout detalhado' : 'Layout limpo'}
-              aria-label={layout === 'detailed' ? 'Layout detalhado (clique para layout limpo)' : 'Layout limpo (clique para layout detalhado)'}
+              aria-label={
+                layout === 'detailed'
+                  ? 'Layout detalhado (clique para layout limpo)'
+                  : 'Layout limpo (clique para layout detalhado)'
+              }
               className={`p-2 rounded-md border transition cursor-pointer ${
                 theme === 'dark'
                   ? 'border-zinc-700 hover:border-zinc-500 bg-zinc-900 text-zinc-300'
                   : 'border-zinc-300 hover:border-zinc-400 bg-zinc-50 text-zinc-600'
               }`}
             >
-              {layout === 'detailed' ? (
-                <LayoutDetailedIcon />
-              ) : (
-                <LayoutCleanIcon />
-              )}
+              {layout === 'detailed' ? <LayoutDetailedIcon /> : <LayoutCleanIcon />}
             </button>
           )}
 
-          <button 
+          <button
+            type="button"
             onClick={toggleTheme}
             className={`p-2 rounded-md border text-xs sm:text-sm cursor-pointer ${
-              theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-900' : 'border-zinc-200 hover:bg-zinc-100'
+              theme === 'dark'
+                ? 'border-zinc-800 hover:bg-zinc-900'
+                : 'border-zinc-200 hover:bg-zinc-100'
             }`}
-            aria-label="Alternar tema">
+            aria-label="Alternar tema"
+          >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
         </div>
