@@ -25,12 +25,12 @@ export default function LiveView({
     <div className={`p-4 sm:p-6 rounded-xl border max-w-4xl mx-auto ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 pb-4 border-b border-zinc-800/40">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Acompanhamento Operacional</h2>
-          <p className="text-xs text-zinc-400 mt-0.5">Cronograma ativo ancorado às {baseTime}</p>
+          <h2 className="text-xl font-bold tracking-tight">Casamento Paolla e Bruno</h2>
+          <p className="text-xs text-zinc-400 mt-0.5">Cronograma ativo com inicio previsto para {baseTime}</p>
         </div>
         <div className="self-start sm:self-auto">
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse">
-            ● Modo Evento Vivo
+            ● Ao vivo
           </span>
         </div>
       </div>

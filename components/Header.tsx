@@ -56,12 +56,12 @@ export default function Header({
           priority
         />
         <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400 sm:inline-block hidden">
-          Control Center
+          Live
         </span>
       </div>
       
       <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 text-sm w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-800">
-        <div className="flex items-center gap-1 bg-zinc-900/10 dark:bg-zinc-800/40 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-1  p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
           <button 
             onClick={() => setView('live')} 
             className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition ${view === 'live' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'}`}>

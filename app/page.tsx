@@ -24,39 +24,33 @@ export default function WediCasa() {
   const [currentBlockIndex, setCurrentBlockIndex] = useState<number>(-1);
   const [blocks, setBlocks] = useState<Block[]>([]);
 
-  // 1. Defina a função fora ou dentro do componente (fora do useEffect)
-  const triggerLocalPush = (title: string, message: string) => {
-    if (typeof window !== 'undefined' && Notification.permission === 'granted') {
-      new Notification(title, { 
-        body: message, 
-        icon: '/logo.png' // Substitua pelo ícone do wedi.casa
-      });
-    }
-  };
-
   // 2. CARREGAMENTO INICIAL E ASSINATURA REALTIME (WebSockets)
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
-    
-      // 1. Registra o arquivo sw.js
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('Service Worker registrado com sucesso:', registration.scope);
-          
-          // 2. Solicita permissão para notificações
-          return Notification.requestPermission().then((permission) => {
-            if (permission === 'granted') {
-              // Aqui vamos gerar a assinatura de Push para salvar no Supabase posteriormente
-              getPushSubscription(registration);
-            }
-          });
-        })
-        .catch((err) => console.error('Erro ao registrar Service Worker:', err));
+    // 1. Só executa no lado do cliente
+    if (typeof window === 'undefined') return;
+
+    // 2. BLINDAGEM DO MOBILE: Verifica se o navegador suporta Notificações normais
+    const supportsNotifications = 'Notification' in window;
+    const supportsServiceWorker = 'serviceWorker' in navigator;
+    const supportsPush = 'PushManager' in window;
+
+    // Solicita permissão apenas se o navegador suportar nativamente (Desktop / Android)
+    if (supportsNotifications && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
     }
 
-    // Solicita permissão ao usuário logo que a página carrega
-    if (typeof window !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission();
+    // 3. Registro do Service Worker e Push Subscription com checagem rígida
+    if (supportsServiceWorker && supportsPush) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('Service Worker registrado:', registration.scope);
+          
+          // Só tenta gerar o push se a permissão já foi concedida
+          if (supportsNotifications && window.Notification.permission === 'granted') {
+            getPushSubscription(registration);
+          }
+        })
+        .catch((err) => console.error('Erro ao registrar Service Worker:', err));
     }
     
     // Carrega preferências visuais do cliente
@@ -104,14 +98,6 @@ export default function WediCasa() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blocks', filter: `event_id=eq.${HARDCODED_EVENT_ID}` }, (payload: any) => {
         // Recarrega os blocos para garantir ordenação correta pós-mutação alheia
         fetchEventData();
-
-        // 🚀 QUEM CHAMA O PUSH EM CASO DE AJUSTE DE TEMPO:
-        if (payload.new) {
-          triggerLocalPush(
-            "⚠️ Ajuste no Cronograma", 
-            `O bloco "${payload.new.title}" sofreu uma alteração no tempo.`
-          );
-        }
       })
       .subscribe();
 
