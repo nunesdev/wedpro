@@ -43,7 +43,7 @@ export function QueueOperator() {
           'rounded-xl border p-4 transition-colors',
           status === 'called' && 'border-amber-500/40 bg-amber-500/[0.04]',
           status === 'preparing' && 'border-emerald-500/40 bg-emerald-500/[0.04]',
-          status === 'idle' && 'border-zinc-800 bg-zinc-950/40'
+          status === 'idle' && 'border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/40'
         )}
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -72,7 +72,7 @@ export function QueueOperator() {
                     className="mt-3 items-start"
                   />
                 )}
-                <h2 className="mt-2 text-xl font-bold text-zinc-50">{activeGuest.name}</h2>
+                <h2 className="mt-2 text-xl font-bold text-zinc-900 dark:text-zinc-50">{activeGuest.name}</h2>
                 <p className="text-xs text-zinc-500">
                   {status === 'called'
                     ? 'Aguardando o convidado chegar ao balcão'
@@ -117,7 +117,7 @@ export function QueueOperator() {
         </div>
 
         {timerActive && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-800/60 pt-4">
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800/60">
             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Ajustar tempo
             </span>
@@ -131,7 +131,7 @@ export function QueueOperator() {
       </section>
 
       {/* Adicionar à fila */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <section className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
         <h3 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
           Entrar na fila
         </h3>
@@ -141,7 +141,7 @@ export function QueueOperator() {
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
             placeholder="Nome do convidado"
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-600"
           />
           <Button type="submit" disabled={!nameInput.trim()}>
             Adicionar
@@ -155,7 +155,7 @@ export function QueueOperator() {
           Fila de espera ({queue.length})
         </h3>
         {queue.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+          <p className="rounded-xl border border-dashed border-zinc-300 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800">
             Ninguém na fila
           </p>
         ) : (
@@ -163,13 +163,13 @@ export function QueueOperator() {
             {queue.map((guest, index) => (
               <li
                 key={guest.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+                className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="shrink-0 rounded-md border border-zinc-700 px-2 py-1 font-mono text-sm font-bold text-zinc-500">
                     #{index + 1}
                   </span>
-                  <span className="truncate font-semibold text-zinc-100">{guest.name}</span>
+                  <span className="truncate font-semibold text-zinc-900 dark:text-zinc-100">{guest.name}</span>
                 </div>
                 <Button
                   variant="ghost"

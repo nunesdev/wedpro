@@ -46,7 +46,7 @@ export function Toggle({
             'absolute inset-0 rounded-full border transition-colors',
             checked
               ? 'bg-emerald-600 border-emerald-500'
-              : 'bg-zinc-800 border-zinc-700'
+              : 'bg-zinc-200 border-zinc-300 dark:bg-zinc-800 dark:border-zinc-700'
           )}
         />
         <span

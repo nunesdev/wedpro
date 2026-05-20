@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import type { Block, CalculatedBlock, LayoutMode, ThemeMode } from '@/types';
+import type { Block, CalculatedBlock, LayoutMode } from '@/types';
 import { TIMELINE_EVENT_ID } from '@/lib/timeline/constants';
 import { supabase } from '@/lib/supabase';
 import { calculateTimeline } from '@/utils/timeline-calculations';
@@ -14,14 +14,11 @@ interface TimelineStoreState {
   blocks: Block[];
   baseTime: string;
   currentBlockIndex: number;
-  theme: ThemeMode;
   layout: LayoutMode;
   initialLoading: boolean;
   pendingKeys: string[];
   confirmStartBlockId: string | null;
 
-  setTheme: (theme: ThemeMode) => void;
-  toggleTheme: () => void;
   setLayout: (layout: LayoutMode) => void;
   toggleLayout: () => void;
   setInitialLoading: (loading: boolean) => void;
@@ -49,20 +46,11 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   blocks: [],
   baseTime: '16:00',
   currentBlockIndex: -1,
-  theme: 'dark',
   layout: 'detailed',
   initialLoading: true,
   pendingKeys: [],
   confirmStartBlockId: null,
 
-  setTheme: (theme) => set({ theme }),
-  toggleTheme: () => {
-    const next = get().theme === 'dark' ? 'light' : 'dark';
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wedi_theme', next);
-    }
-    set({ theme: next });
-  },
   setLayout: (layout) => set({ layout }),
   toggleLayout: () =>
     set({ layout: get().layout === 'detailed' ? 'clean' : 'detailed' }),

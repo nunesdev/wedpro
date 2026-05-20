@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useThemeStore } from '@/store/theme-store';
 import { cn } from '@/utils/cn';
-import type { ThemeMode } from '@/types';
 
 const LINKS = [
   { href: '/live', label: 'Live' },
@@ -12,8 +12,9 @@ const LINKS = [
   { href: '/selfbar/operacao', label: 'Self-bar' },
 ] as const;
 
-export function DomainNav({ theme }: { theme: ThemeMode }) {
+export function DomainNav() {
   const pathname = usePathname();
+  const theme = useThemeStore((s) => s.theme);
   const isDark = theme === 'dark';
 
   return (
@@ -23,6 +24,7 @@ export function DomainNav({ theme }: { theme: ThemeMode }) {
           pathname === link.href ||
           pathname.startsWith(`${link.href}/`) ||
           (link.href === '/selfbar/operacao' && pathname.startsWith('/selfbar'));
+
         return (
           <Link
             key={link.href}

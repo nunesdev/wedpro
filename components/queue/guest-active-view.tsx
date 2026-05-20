@@ -17,7 +17,7 @@ export function GuestActiveView() {
   if (!activeGuest) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-lg font-medium text-zinc-300">Ninguém no balcão</p>
+        <p className="text-lg font-medium text-zinc-700 dark:text-zinc-300">Ninguém no balcão</p>
         <p className="text-sm text-zinc-500">
           Aguarde ser chamado. A equipa gere a fila em{' '}
           <Link href="/selfbar/operacao" className="text-emerald-400 underline underline-offset-2">
@@ -38,7 +38,7 @@ export function GuestActiveView() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           {isPreparing ? 'Prepare o seu drink' : isCalled ? 'Foi chamado' : 'Aguarde'}
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-zinc-50">{activeGuest.name}</h1>
+        <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-zinc-50">{activeGuest.name}</h1>
       </div>
 
       {(isCalled || isPreparing) && (

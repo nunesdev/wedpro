@@ -54,7 +54,7 @@ export function Dropdown<T extends string | number>({
         disabled={disabled}
         aria-expanded={open}
         onClick={() => !disabled && setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-2 text-sm font-medium text-zinc-200 hover:border-zinc-600 cursor-pointer disabled:opacity-50"
+        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:border-zinc-600 disabled:opacity-50"
       >
         <span className="truncate">{label}</span>
         <svg
@@ -74,12 +74,12 @@ export function Dropdown<T extends string | number>({
       </button>
 
       {open && (
-        <ul className="absolute left-0 right-0 z-30 mt-1.5 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+        <ul className="absolute left-0 right-0 z-30 mt-1.5 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
           {options.map((option) => (
             <li key={String(option.value)}>
               <button
                 type="button"
-                className="w-full px-3 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800 cursor-pointer"
+                className="w-full px-3 py-2.5 text-left text-sm text-zinc-800 hover:bg-zinc-50 cursor-pointer dark:text-zinc-200 dark:hover:bg-zinc-800"
                 onClick={() => {
                   onSelect(option.value);
                   setOpen(false);

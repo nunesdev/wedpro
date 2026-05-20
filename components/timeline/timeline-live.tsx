@@ -7,7 +7,6 @@ import type { OffsetSelectValue } from '@/components/OffsetDropdown';
 
 export function TimelineLive() {
   const { showToast } = useToast();
-  const theme = useTimelineStore((s) => s.theme);
   const layout = useTimelineStore((s) => s.layout);
   const baseTime = useTimelineStore((s) => s.baseTime);
   const currentBlockIndex = useTimelineStore((s) => s.currentBlockIndex);
@@ -51,7 +50,6 @@ export function TimelineLive() {
 
   return (
     <LiveView
-      theme={theme}
       layout={layout}
       baseTime={baseTime}
       timelineData={getCalculatedTimeline()}

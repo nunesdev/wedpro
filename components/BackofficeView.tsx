@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Block, ThemeMode } from '@/types';
+import { Block } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { cn } from '@/utils/cn';
 
 interface BackofficeViewProps {
-  theme: ThemeMode;
   baseTime: string;
   setBaseTime: (time: string) => void;
   blocks: Block[];
@@ -17,7 +17,6 @@ interface BackofficeViewProps {
 }
 
 export default function BackofficeView({
-  theme,
   baseTime,
   setBaseTime,
   blocks,
@@ -43,25 +42,19 @@ export default function BackofficeView({
     setTitle('');
   };
 
-  // LÓGICA DE DRAG AND DROP NATIVA
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
-    // Define o efeito visual do mapeamento nativo
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e: React.DragEvent, overIndex: number) => {
-    e.preventDefault(); // Obrigatório para permitir o drop
-    
+    e.preventDefault();
     if (draggedIndex === null || draggedIndex === overIndex) return;
 
-    // Cria uma cópia e reordena os blocos reativamente
     const updatedBlocks = [...orderedBlocks];
     const draggedItem = updatedBlocks[draggedIndex];
-
     updatedBlocks.splice(draggedIndex, 1);
     updatedBlocks.splice(overIndex, 0, draggedItem);
-
     setDraggedIndex(overIndex);
     setOrderedBlocks(updatedBlocks);
   };
@@ -73,35 +66,42 @@ export default function BackofficeView({
     setDraggedIndex(null);
   };
 
+  const inputClass =
+    'rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white';
+
   return (
-    <div className={`p-4 sm:p-6 rounded-xl border max-w-3xl mx-auto ${theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-200'}`}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-800/40">
+    <div className="mx-auto max-w-3xl rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-6 flex flex-col gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800/40 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Grade Horária Original</h2>
-          <p className="text-xs text-zinc-400">Monte e ordene o cronograma arrastando os blocos.</p>
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Grade Horária Original
+          </h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Monte e ordene o cronograma arrastando os blocos.
+          </p>
         </div>
         <button
           type="button"
           onClick={onResetOffsets}
           disabled={isPending('resetOffsets')}
-          className="text-xs text-red-400 hover:text-red-300 self-start sm:self-auto transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+          className="flex cursor-pointer items-center gap-1.5 self-start text-xs text-red-600 transition hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300 sm:self-auto"
         >
           {isPending('resetOffsets') && <LoadingSpinner size="sm" />}
           Zerar tempos extras live
         </button>
       </div>
-      
-      <div className="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <label className="text-xs sm:text-sm font-medium text-zinc-400">Âncora de Início:</label>
+
+      <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+        <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 sm:text-sm">
+          Âncora de Início:
+        </label>
         <div className="relative w-full sm:w-auto">
           <input
             type="time"
             value={baseTime}
             onChange={(e) => setBaseTime(e.target.value)}
             disabled={isPending('baseTime')}
-            className={`w-full sm:w-auto px-3 py-2 rounded-md border text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50 ${
-              theme === 'dark' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300'
-            }`}
+            className={cn(inputClass, 'w-full sm:w-auto disabled:opacity-50')}
           />
           {isPending('baseTime') && (
             <span className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -111,40 +111,35 @@ export default function BackofficeView({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 mb-6">
-        <input 
+      <form onSubmit={handleSubmit} className="mb-6 flex flex-col gap-2 sm:flex-row">
+        <input
           type="text"
           placeholder="Nome do bloco (ex: Brinde dos Noivos)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className={`flex-1 px-3 py-2 rounded-md text-sm border focus:outline-none focus:border-emerald-500 ${
-            theme === 'dark' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300'
-          }`}
+          className={cn(inputClass, 'flex-1')}
         />
-        <div className="flex gap-2 w-full sm:w-auto">
-          <input 
+        <div className="flex w-full gap-2 sm:w-auto">
+          <input
             type="number"
             placeholder="Minutos"
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
-            className={`w-1/2 sm:w-24 px-3 py-2 rounded-md text-sm border focus:outline-none focus:border-emerald-500 ${
-              theme === 'dark' ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-zinc-100 border-zinc-300'
-            }`}
+            className={cn(inputClass, 'w-1/2 sm:w-24')}
           />
           <button
             type="submit"
             disabled={isPending('addBlock')}
-            className="w-1/2 sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium transition active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+            className="flex w-1/2 cursor-pointer items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isPending('addBlock') ? <LoadingSpinner size="sm" className="text-white" /> : 'Adicionar'}
           </button>
         </div>
       </form>
 
-      {/* LISTA COM DRAG AND DROP */}
-      <div className={`space-y-2 select-none relative ${isPending('reorder') ? 'opacity-70' : ''}`}>
+      <div className={cn('relative space-y-2 select-none', isPending('reorder') && 'opacity-70')}>
         {isPending('reorder') && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
             <LoadingSpinner size="md" className="text-emerald-500" />
           </div>
         )}
@@ -153,31 +148,29 @@ export default function BackofficeView({
           const isRemoving = isPending(`remove:${block.id}`);
 
           return (
-            <div 
+            <div
               key={block.id}
               draggable={!isPending('reorder')}
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
-              className={`flex items-center justify-between p-3 rounded-lg border text-sm transition-all duration-150 cursor-grab active:cursor-grabbing ${
-                isDragging 
-                  ? 'opacity-40 border-dashed border-emerald-500 bg-emerald-500/5' 
-                  : theme === 'dark' 
-                    ? 'bg-zinc-800/30 border-zinc-800 hover:bg-zinc-800/60' 
-                    : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100/60'
-              }`}
+              className={cn(
+                'flex cursor-grab items-center justify-between rounded-lg border p-3 text-sm transition-all duration-150 active:cursor-grabbing',
+                isDragging
+                  ? 'border-dashed border-emerald-500 bg-emerald-500/5 opacity-40'
+                  : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100/80 dark:border-zinc-800 dark:bg-zinc-800/30 dark:hover:bg-zinc-800/60'
+              )}
             >
-              <div className="flex items-center gap-3 truncate mr-2 pointer-events-none">
-                {/* Ícone Minimalista de Drag Handle (6 pontinhos) */}
-                <div className="text-zinc-500 text-xs tracking-widest font-bold select-none shrink-0">
+              <div className="pointer-events-none mr-2 flex min-w-0 items-center gap-3 truncate">
+                <div className="shrink-0 select-none text-xs font-bold tracking-widest text-zinc-400">
                   ⋮⋮
                 </div>
-                <span className="text-zinc-500 font-mono text-xs hidden sm:inline">#{index + 1}</span>
-                <span className="font-medium truncate">{block.title}</span>
+                <span className="hidden font-mono text-xs text-zinc-500 sm:inline">#{index + 1}</span>
+                <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">{block.title}</span>
               </div>
-              
-              <div className="flex items-center gap-4 shrink-0 pointer-events-none">
-                <span className="text-zinc-400 font-mono text-xs">{block.duration}m</span>
+
+              <div className="pointer-events-none flex shrink-0 items-center gap-4">
+                <span className="font-mono text-xs text-zinc-500">{block.duration}m</span>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -185,7 +178,7 @@ export default function BackofficeView({
                     onRemoveBlock(block.id);
                   }}
                   disabled={isRemoving}
-                  className="text-zinc-500 hover:text-red-400 transition text-xs pointer-events-auto cursor-pointer disabled:cursor-not-allowed p-1 disabled:opacity-50 flex items-center gap-1"
+                  className="pointer-events-auto flex cursor-pointer items-center gap-1 p-1 text-xs text-zinc-500 transition hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-red-400"
                 >
                   {isRemoving ? <LoadingSpinner size="sm" /> : 'Remover'}
                 </button>

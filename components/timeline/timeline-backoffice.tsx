@@ -6,7 +6,6 @@ import BackofficeView from '@/components/BackofficeView';
 
 export function TimelineBackoffice() {
   const { showToast } = useToast();
-  const theme = useTimelineStore((s) => s.theme);
   const baseTime = useTimelineStore((s) => s.baseTime);
   const blocks = useTimelineStore((s) => s.blocks);
   const isPending = useTimelineStore((s) => s.isPending);
@@ -19,7 +18,6 @@ export function TimelineBackoffice() {
 
   return (
     <BackofficeView
-      theme={theme}
       baseTime={baseTime}
       setBaseTime={(time) =>
         runWithLoading('baseTime', async () => {

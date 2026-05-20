@@ -1,14 +1,12 @@
 'use client';
 
-import React from 'react';
-import { ThemeMode } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { cn } from '@/utils/cn';
 
 interface ConfirmModalProps {
   open: boolean;
   title: string;
   message: string;
-  theme: ThemeMode;
   confirmLabel?: string;
   cancelLabel?: string;
   loading?: boolean;
@@ -20,7 +18,6 @@ export default function ConfirmModal({
   open,
   title,
   message,
-  theme,
   confirmLabel = 'Continuar',
   cancelLabel = 'Cancelar',
   loading = false,
@@ -28,8 +25,6 @@ export default function ConfirmModal({
   onCancel,
 }: ConfirmModalProps) {
   if (!open) return null;
-
-  const isDark = theme === 'dark';
 
   return (
     <div
@@ -40,37 +35,22 @@ export default function ConfirmModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer disabled:cursor-not-allowed"
+        className="absolute inset-0 cursor-pointer bg-black/60 backdrop-blur-sm disabled:cursor-not-allowed"
         onClick={onCancel}
         disabled={loading}
         aria-label="Fechar"
       />
-      <div
-        className={`relative w-full max-w-md rounded-xl border p-6 shadow-2xl ${
-          isDark
-            ? 'bg-zinc-900 border-zinc-700 text-zinc-100'
-            : 'bg-white border-zinc-200 text-zinc-900'
-        }`}
-      >
-        <h2
-          id="confirm-modal-title"
-          className="text-lg font-bold tracking-tight mb-2"
-        >
+      <div className="relative w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-zinc-900 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+        <h2 id="confirm-modal-title" className="mb-2 text-lg font-bold tracking-tight">
           {title}
         </h2>
-        <p className={`text-sm leading-relaxed mb-6 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-          {message}
-        </p>
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <p className="mb-6 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">{message}</p>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed ${
-              isDark
-                ? 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-50'
-            }`}
+            className="cursor-pointer rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             {cancelLabel}
           </button>
@@ -78,7 +58,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 min-w-[7rem] cursor-pointer disabled:cursor-not-allowed"
+            className="flex min-w-[7rem] cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? <LoadingSpinner size="sm" className="text-white" /> : confirmLabel}
           </button>

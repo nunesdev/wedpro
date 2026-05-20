@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ThemeMode } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { cn } from '@/utils/cn';
 
 export type OffsetSelectValue = number | 'reset';
 
@@ -30,20 +30,17 @@ function ChevronDownIcon({ className }: { className?: string }) {
 }
 
 interface OffsetDropdownProps {
-  theme: ThemeMode;
   disabled?: boolean;
   onSelect: (value: OffsetSelectValue) => void | Promise<void>;
 }
 
 export default function OffsetDropdown({
-  theme,
   disabled = false,
   onSelect,
 }: OffsetDropdownProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isDark = theme === 'dark';
   const loading = busy;
 
   useEffect(() => {
@@ -78,54 +75,44 @@ export default function OffsetDropdown({
   };
 
   return (
-    <div ref={containerRef} className="relative flex-1 sm:flex-initial min-w-0">
+    <div ref={containerRef} className="relative min-w-0 flex-1 sm:flex-initial">
       <button
         type="button"
         disabled={disabled || loading}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => !loading && setOpen((prev) => !prev)}
-        className={`w-full sm:w-auto sm:min-w-[10.5rem] flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+        className={cn(
+          'flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-[10.5rem] sm:w-auto',
           open
-            ? isDark
-              ? 'border-emerald-500/40 bg-zinc-800 text-zinc-100'
-              : 'border-emerald-500/50 bg-white text-zinc-900 shadow-sm'
-            : isDark
-              ? 'border-zinc-700 bg-zinc-800/80 text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800'
-              : 'border-zinc-300 bg-zinc-50 text-zinc-700 hover:border-zinc-400 hover:bg-white'
-        }`}
+            ? 'border-emerald-500/50 bg-white text-zinc-900 shadow-sm dark:border-emerald-500/40 dark:bg-zinc-800 dark:text-zinc-100'
+            : 'border-zinc-300 bg-zinc-50 text-zinc-700 hover:border-zinc-400 hover:bg-white dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800'
+        )}
       >
         <span className="truncate">{loading ? 'Aplicando…' : 'Atrasar esse bloco'}</span>
         {loading ? (
           <LoadingSpinner size="sm" />
         ) : (
-          <ChevronDownIcon
-            className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
-          />
+          <ChevronDownIcon className={cn('shrink-0 transition-transform', open && 'rotate-180')} />
         )}
       </button>
 
       {open && !loading && (
         <ul
           role="listbox"
-          className={`absolute left-0 right-0 sm:right-auto sm:min-w-full mt-1.5 z-30 py-1 rounded-lg border shadow-xl overflow-hidden ${
-            isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-200'
-          }`}
+          className="absolute left-0 right-0 z-30 mt-1.5 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 sm:right-auto sm:min-w-full"
         >
           {OFFSET_OPTIONS.map((option) => (
             <li key={String(option.value)} role="option">
               <button
                 type="button"
                 onClick={() => handleSelect(option.value)}
-                className={`w-full text-left px-3 py-3 sm:py-2.5 text-sm transition cursor-pointer ${
+                className={cn(
+                  'w-full cursor-pointer px-3 py-3 text-left text-sm transition sm:py-2.5',
                   option.value === 'reset'
-                    ? isDark
-                      ? 'font-medium text-red-400 hover:bg-red-500/10 active:bg-red-500/15'
-                      : 'font-medium text-red-600 hover:bg-red-50 active:bg-red-100'
-                    : isDark
-                      ? 'font-mono font-semibold text-zinc-200 hover:bg-zinc-800 active:bg-zinc-700'
-                      : 'font-mono font-semibold text-zinc-800 hover:bg-zinc-50 active:bg-zinc-100'
-                }`}
+                    ? 'font-medium text-red-600 hover:bg-red-50 active:bg-red-100 dark:text-red-400 dark:hover:bg-red-500/10 dark:active:bg-red-500/15'
+                    : 'font-mono font-semibold text-zinc-800 hover:bg-zinc-50 active:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:active:bg-zinc-700'
+                )}
               >
                 {option.label}
               </button>
