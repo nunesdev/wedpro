@@ -123,7 +123,7 @@ export function QueueOperator() {
                 <>
                   <p className="mb-8 text-3xl font-medium text-zinc-600">Ninguém no balcão</p>
                   {queue.length > 0 && (
-                    <Button size="lg" variant="amber" onClick={callNext} className="h-20 px-12 text-2xl animate-bounce">
+                    <Button size="lg" variant="amber" onClick={() => callNext()} className="h-20 px-12 text-2xl animate-bounce">
                       Chamar Próximo
                     </Button>
                   )}
@@ -242,7 +242,7 @@ export function QueueOperator() {
 
               <div className="flex flex-wrap gap-2">
                 {!activeGuest && queue.length > 0 && (
-                  <Button variant="amber" onClick={callNext}>
+                  <Button variant="amber" onClick={() => callNext()}>
                     Chamar próximo
                   </Button>
                 )}
