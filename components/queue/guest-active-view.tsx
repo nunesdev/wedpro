@@ -19,7 +19,7 @@ export function GuestActiveView() {
       <div className="space-y-4 text-center">
         <p className="text-lg font-medium text-zinc-700 dark:text-zinc-300">Ninguém no balcão</p>
         <p className="text-sm text-zinc-500">
-          Aguarde ser chamado. A equipa gere a fila em{' '}
+          Aguarde ser chamado. Ou adicione seu nome em{' '}
           <Link href="/selfbar/operacao" className="text-emerald-400 underline underline-offset-2">
             Operação
           </Link>

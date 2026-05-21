@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TimerDisplay } from '@/components/queue/timer-display';
-import { useQueueState } from '@/hooks/useQueueActions';
+import { useSupabaseSelfBar } from '@/hooks/useSupabaseSelfBar';
 import { cn } from '@/utils/cn';
 
 export function QueueMonitor() {
-  const { activeGuest, status, secondsLeft, queue, hasHydrated } = useQueueState();
+  const { activeGuest, status, secondsLeft, queue, hasHydrated } = useSupabaseSelfBar();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -33,7 +33,7 @@ export function QueueMonitor() {
 
   const statusLabel =
     status === 'called'
-      ? 'Chamado — venha à barra'
+      ? 'Chamando — venha ao bar'
       : status === 'preparing'
         ? 'Preparando drink'
         : 'Aguardando convidados';
