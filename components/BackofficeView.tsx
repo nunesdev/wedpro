@@ -301,8 +301,7 @@ export default function BackofficeView({
 
               <div className="flex justify-end gap-2 pt-4 border-t border-zinc-100 dark:border-zinc-800/60">
                 <button 
-                  type="button" 
-                  variant="outline" 
+                  type="button"
                   onClick={() => setEditingBlock(null)}
                   className="border-zinc-300 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
                 >
