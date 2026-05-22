@@ -279,7 +279,6 @@ export default function BackofficeView({
                 <input
                   type="text"
                   value={editResponsibles}
-                  value={editResponsibles}
                   onChange={(e) => setEditResponsibles(e.target.value)}
                   className={cn(inputClass, 'w-full')}
                   placeholder="Ex: Banda, Cerimonial, Noivo"
