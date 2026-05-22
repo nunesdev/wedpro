@@ -40,6 +40,7 @@ interface TimelineStoreState {
   reorderBlocks: (updatedBlocks: Block[]) => Promise<MutationResult>;
   startBlockNow: (targetBlockId: string) => Promise<MutationResult>;
   executeStartBlockNow: (targetBlockId: string) => Promise<void>;
+  updateBlock: (id: string, title: string, duration: number, responsibles: string | null) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
