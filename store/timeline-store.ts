@@ -241,4 +241,33 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
 
     return { ok: true };
   },
+
+  updateBlock: (id: string, title: string, duration: number, responsibles: string | null) => {
+    return get().runWithLoading(`update:${id}`, async () => {
+      try {
+        const { error } = await supabase
+          .from('blocks')
+          .update({ 
+            title, 
+            duration, 
+            responsibles 
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Atualiza o estado local do Zustand na memória para refletir na tela imediatamente
+        set((state) => ({
+          blocks: state.blocks.map((b) => 
+            b.id === id ? { ...b, title, duration, responsibles } : b
+          )
+        }));
+
+        return { ok: true };
+      } catch (err: any) {
+        console.error('Erro ao atualizar bloco no Supabase:', err);
+        return { ok: false, error: err.message || 'Erro ao atualizar bloco.' };
+      }
+    });
+  },
 }));

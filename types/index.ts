@@ -5,6 +5,7 @@ export interface Block {
   duration: number;
   time_offset: number; // Atualizado de offset para time_offset
   position: number;
+  responsibles?: string | null;
 }
 
 export interface CalculatedBlock extends Block {

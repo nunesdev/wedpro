@@ -15,6 +15,7 @@ export function TimelineBackoffice() {
   const removeBlock = useTimelineStore((s) => s.removeBlock);
   const resetOffsets = useTimelineStore((s) => s.resetOffsets);
   const reorderBlocks = useTimelineStore((s) => s.reorderBlocks);
+  const updateBlock = useTimelineStore((s) => s.updateBlock);
 
   return (
     <BackofficeView
@@ -52,6 +53,13 @@ export function TimelineBackoffice() {
         runWithLoading('reorder', async () => {
           const result = await reorderBlocks(updated);
           if (result.ok) showToast('Ordem atualizada', 'info');
+          else showToast(result.error, 'error');
+        })
+      }
+      onUpdateBlock={(id, title, duration, resp) =>
+        runWithLoading(`update:${id}`, async () => {
+          const result = await updateBlock(id, title, duration, resp);
+          if (result.ok) showToast(`Bloco atualizado com sucesso!`, 'success');
           else showToast(result.error, 'error');
         })
       }

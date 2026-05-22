@@ -95,6 +95,11 @@ export default function LiveView({
                         </span>
                       )}
                     </h3>
+                    {block.responsibles && (
+                      <p className="mt-1 text-xs text-emerald-400">
+                        👤 Resp: {block.responsibles}
+                      </p>
+                    )}
                     {layout === 'detailed' && (
                       <p className="mt-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
                         Base: {block.duration}m
