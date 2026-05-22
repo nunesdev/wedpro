@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/Header';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { ToastRoot } from '@/components/ToastRoot';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -36,10 +37,12 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen transition-colors duration-200`}>
         <ThemeProvider>
-          <div className="flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>
-          </div>
+          <ToastRoot>
+            <div className="flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1 px-3 py-4 sm:px-6 sm:py-6">{children}</main>
+            </div>
+          </ToastRoot>
         </ThemeProvider>
       </body>
     </html>

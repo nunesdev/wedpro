@@ -21,7 +21,7 @@ export default function CheckinPage() {
         Portaria — Check-in
       </h1>
       <p className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">
-        Pesquise na lista mestra e confirme a presença dos convidados.
+        Pesquise na lista abaixo e confirme a presença dos convidados.
       </p>
       <CheckinReception />
     </div>

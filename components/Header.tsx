@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import HeaderNavMenu from '@/components/HeaderNavMenu';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useToast } from '@/components/ToastProvider';
 import { Toggle } from '@/components/ui/toggle';
 import { TIMELINE_EVENT_ID } from '@/lib/timeline/constants';
-import { unsubscribeWebPush } from '@/lib/push';
+import { subscribeWebPush, unsubscribeWebPush } from '@/lib/push';
 import { useThemeStore } from '@/store/theme-store';
 import { useTimelineStore } from '@/store/timeline-store';
 import { cn } from '@/utils/cn';
@@ -53,8 +54,21 @@ function BellIcon({ className }: { className?: string }) {
   );
 }
 
+async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === 'undefined') return null;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+
+  try {
+    return await navigator.serviceWorker.register('/sw.js');
+  } catch (err) {
+    console.error('Erro ao registrar Service Worker:', err);
+    return null;
+  }
+}
+
 export default function Header() {
   const pathname = usePathname();
+  const { showToast } = useToast();
   const theme = useThemeStore((s) => s.theme);
   const layout = useTimelineStore((s) => s.layout);
   const toggleLayout = useTimelineStore((s) => s.toggleLayout);
@@ -68,18 +82,22 @@ export default function Header() {
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (typeof window === 'undefined') return;
 
-    setNotificationsSupported(true);
+    const supportsPush =
+      'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+
+    setNotificationsSupported(supportsPush);
+
+    if (!supportsPush) return;
+
     const saved = localStorage.getItem('wedi_notifications');
     const granted = Notification.permission === 'granted';
     setNotificationsOn(saved === 'true' || (saved !== 'false' && granted));
 
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
-        swRegistrationRef.current = registration;
-      });
-    }
+    void ensureServiceWorker().then((registration) => {
+      if (registration) swRegistrationRef.current = registration;
+    });
   }, []);
 
   const handleNotificationsToggle = async (enabled: boolean) => {
@@ -88,22 +106,48 @@ export default function Header() {
     setNotificationsLoading(true);
     try {
       if (!enabled) {
-        if (swRegistrationRef.current) {
-          await unsubscribeWebPush(swRegistrationRef.current, TIMELINE_EVENT_ID);
+        const registration =
+          swRegistrationRef.current ?? (await ensureServiceWorker());
+        if (registration) {
+          const result = await unsubscribeWebPush(registration, TIMELINE_EVENT_ID);
+          if (!result.ok) {
+            showToast(result.error, 'error');
+            return;
+          }
         }
         localStorage.setItem('wedi_notifications', 'false');
         setNotificationsOn(false);
+        showToast('Notificações desativadas', 'warning');
         return;
       }
 
       const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        localStorage.setItem('wedi_notifications', 'true');
-        setNotificationsOn(true);
-      } else {
+      if (permission !== 'granted') {
         localStorage.setItem('wedi_notifications', 'false');
         setNotificationsOn(false);
+        showToast('Permissão de notificações negada', 'error');
+        return;
       }
+
+      const registration =
+        swRegistrationRef.current ?? (await ensureServiceWorker());
+      if (!registration) {
+        showToast('Push não suportado neste dispositivo', 'error');
+        return;
+      }
+      swRegistrationRef.current = registration;
+
+      const result = await subscribeWebPush(registration, TIMELINE_EVENT_ID);
+      if (!result.ok) {
+        showToast(result.error, 'error');
+        setNotificationsOn(false);
+        localStorage.setItem('wedi_notifications', 'false');
+        return;
+      }
+
+      localStorage.setItem('wedi_notifications', 'true');
+      setNotificationsOn(true);
+      showToast('Notificações ativadas', 'success');
     } finally {
       setNotificationsLoading(false);
     }
@@ -112,37 +156,37 @@ export default function Header() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex flex-col gap-4 border-b px-4 py-4 sm:px-6',
+        'sticky top-0 z-50 relative border-b px-3 py-3 sm:px-6 sm:py-4',
         isDark
           ? 'border-zinc-800 bg-zinc-950/95 backdrop-blur-md'
           : 'border-zinc-200 bg-white/95 backdrop-blur-md'
       )}
     >
-      <div className="flex w-full items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-          <Link href="/">
+      <div className="flex w-full items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+          <Link href="/" className="shrink-0">
             <Image
               src="/images/icon-256x256.png"
               alt="Ceria"
-              width={36}
-              height={36}
-              className="shrink-0 rounded-lg"
+              width={32}
+              height={32}
+              className="rounded-lg sm:h-9 sm:w-9"
               priority
             />
           </Link>
           <HeaderNavMenu />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {notificationsSupported && (
             <div
-              className="flex items-center gap-2"
+              className="flex items-center gap-1.5 sm:gap-2"
               title={notificationsOn ? 'Notificações ativas' : 'Ativar notificações'}
             >
               <BellIcon
                 className={cn(
-                  'shrink-0',
-                  notificationsOn ? 'text-emerald-500' : 'text-zinc-400'
+                  'h-[18px] w-[18px] shrink-0',
+                  notificationsOn ? 'text-emerald-500' : isDark ? 'text-zinc-400' : 'text-zinc-500'
                 )}
               />
               <Toggle
@@ -150,6 +194,7 @@ export default function Header() {
                 onChange={handleNotificationsToggle}
                 disabled={notificationsLoading}
                 id="header-notifications"
+                label={notificationsLoading ? '…' : undefined}
               />
             </div>
           )}
@@ -160,7 +205,7 @@ export default function Header() {
               onClick={toggleLayout}
               title={layout === 'detailed' ? 'Layout detalhado' : 'Layout limpo'}
               className={cn(
-                'rounded-md border p-2 transition cursor-pointer',
+                'inline-flex h-9 w-9 items-center justify-center rounded-lg border transition cursor-pointer',
                 isDark
                   ? 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500'
                   : 'border-zinc-300 bg-zinc-50 text-zinc-600 hover:border-zinc-400'

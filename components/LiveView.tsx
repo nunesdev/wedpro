@@ -26,10 +26,10 @@ export default function LiveView({
   isPending,
 }: LiveViewProps) {
   return (
-    <div className="mx-auto max-w-4xl rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="mb-6 flex flex-col gap-2 border-b border-zinc-200 pb-4 dark:border-zinc-800/40 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+    <div className="mx-auto max-w-4xl rounded-xl border border-zinc-200 bg-white p-3 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-5 flex flex-col gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800/40 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl dark:text-zinc-100">
             Casamento Paolla e Bruno
           </h2>
           <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
@@ -115,7 +115,7 @@ export default function LiveView({
                 </div>
 
                 {layout === 'detailed' ? (
-                  <div className="flex w-full items-center justify-end gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800/40 md:w-auto md:border-t-0 md:pt-0">
+                  <div className="flex w-full flex-col gap-2 border-t border-zinc-200 pt-3 sm:flex-row sm:items-center sm:justify-end dark:border-zinc-800/40 md:w-auto md:border-t-0 md:pt-0">
                     {!isPast && !isActive && (
                       <button
                         type="button"

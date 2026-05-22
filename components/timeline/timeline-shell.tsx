@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 import { useTimelineSync } from '@/hooks/useTimelineSync';
 import { useTimelineStore } from '@/store/timeline-store';
-import { ToastProvider, useToast } from '@/components/ToastProvider';
+import { useToast } from '@/components/ToastProvider';
 import ConfirmModal from '@/components/ConfirmModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -51,9 +51,5 @@ function TimelineChrome({ children }: { children: ReactNode }) {
 }
 
 export function TimelineShell({ children }: { children: ReactNode }) {
-  return (
-    <ToastProvider>
-      <TimelineChrome>{children}</TimelineChrome>
-    </ToastProvider>
-  );
+  return <TimelineChrome>{children}</TimelineChrome>;
 }

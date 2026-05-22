@@ -37,7 +37,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-xl py-10">
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-500">
-        Ceria
+        Wed
       </p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Eventos

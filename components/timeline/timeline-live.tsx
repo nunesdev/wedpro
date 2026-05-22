@@ -3,6 +3,7 @@
 import { useTimelineStore } from '@/store/timeline-store';
 import { useToast } from '@/components/ToastProvider';
 import LiveView from '@/components/LiveView';
+import { AddBlockFab } from '@/components/timeline/add-block-fab';
 import type { OffsetSelectValue } from '@/components/OffsetDropdown';
 
 export function TimelineLive() {
@@ -49,14 +50,17 @@ export function TimelineLive() {
   };
 
   return (
-    <LiveView
-      layout={layout}
-      baseTime={baseTime}
-      timelineData={getCalculatedTimeline()}
-      onAdjustOffset={handleAdjustOffset}
-      onStartBlockNow={handleStartBlockNow}
-      currentBlockIndex={currentBlockIndex}
-      isPending={isPending}
-    />
+    <div className="pb-20 sm:pb-6">
+      <LiveView
+        layout={layout}
+        baseTime={baseTime}
+        timelineData={getCalculatedTimeline()}
+        onAdjustOffset={handleAdjustOffset}
+        onStartBlockNow={handleStartBlockNow}
+        currentBlockIndex={currentBlockIndex}
+        isPending={isPending}
+      />
+      <AddBlockFab />
+    </div>
   );
 }
