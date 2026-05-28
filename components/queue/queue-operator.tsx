@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { TimerDisplay } from '@/components/queue/timer-display';
 
-import { useQueueActions, useQueueState } from '@/hooks/useQueueActions';
+import { useToast } from '@/components/ToastProvider';
 import { useSupabaseSelfBar } from '@/hooks/useSupabaseSelfBar';
+import { DUPLICATE_QUEUE_NAME_MESSAGE } from '@/utils/queue-name';
 import { cn } from '@/utils/cn';
 
 export function QueueOperator() {
@@ -13,8 +14,10 @@ export function QueueOperator() {
     queue, activeGuest, status, secondsLeft, hasHydrated,
     joinQueue, removeFromQueue, callNext, skip, startPreparing, finish, addMinutes, resetAll
   } = useSupabaseSelfBar();
+  const { showToast } = useToast();
 
   const [nameInput, setNameInput] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -35,12 +38,29 @@ export function QueueOperator() {
     }
   };
 
-  const handleAddName = (e: FormEvent) => {
+  const handleAddName = async (e: FormEvent) => {
     e.preventDefault();
     const trimmed = nameInput.trim();
     if (!trimmed) return;
-    joinQueue(trimmed);
+
+    const result = await joinQueue(trimmed);
+    if (!result.ok) {
+      if (result.reason === 'duplicate_name') {
+        setNameError(DUPLICATE_QUEUE_NAME_MESSAGE);
+        showToast(DUPLICATE_QUEUE_NAME_MESSAGE, 'warning');
+      } else if (result.reason === 'failed') {
+        showToast('Não foi possível adicionar à fila. Tente novamente.', 'error');
+      }
+      return;
+    }
+
+    setNameError(null);
     setNameInput('');
+  };
+
+  const handleNameInputChange = (value: string) => {
+    setNameInput(value);
+    if (nameError) setNameError(null);
   };
 
   if (!hasHydrated) {
@@ -98,7 +118,7 @@ export function QueueOperator() {
                       status === 'called' ? 'bg-amber-500/20 text-amber-400 animate-pulse' : 'bg-emerald-500/20 text-emerald-400'
                     )}
                   >
-                    {status === 'called' ? 'Aguardando Retirada' : 'Preparando Drink'}
+                    {status === 'called' ? 'Aguardando' : 'Preparando Drink'}
                   </span>
 
                   {timerActive && <TimerDisplay seconds={secondsLeft} size="xl" />}
@@ -158,17 +178,30 @@ export function QueueOperator() {
               </ul>
 
               {/* Form de Adicionar na Tela Cheia */}
-              <form onSubmit={handleAddName} className="mt-6 flex gap-3 pt-6 border-t border-zinc-800">
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="Nome do próximo convidado..."
-                  className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-5 py-4 text-lg text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-500 focus:outline-none"
-                />
-                <Button type="submit" disabled={!nameInput.trim()} className="px-8 text-lg h-auto">
-                  Adicionar
-                </Button>
+              <form onSubmit={handleAddName} className="mt-6 flex flex-col gap-2 pt-6 border-t border-zinc-800">
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => handleNameInputChange(e.target.value)}
+                    placeholder="Nome do próximo convidado..."
+                    aria-invalid={nameError ? true : undefined}
+                    className={cn(
+                      'flex-1 rounded-xl border bg-zinc-950 px-5 py-4 text-lg text-zinc-100 placeholder:text-zinc-600 focus:outline-none',
+                      nameError
+                        ? 'border-amber-500 focus:border-amber-500'
+                        : 'border-zinc-700 focus:border-emerald-500'
+                    )}
+                  />
+                  <Button type="submit" disabled={!nameInput.trim()} className="px-8 text-lg h-auto">
+                    Adicionar
+                  </Button>
+                </div>
+                {nameError && (
+                  <p className="text-sm text-amber-400" role="alert">
+                    {nameError}
+                  </p>
+                )}
               </form>
             </div>
           </div>
@@ -289,17 +322,30 @@ export function QueueOperator() {
                 Espera est.: ~{estimatedWaitMinutes} min
               </span>
             </div>
-            <form onSubmit={handleAddName} className="flex gap-2">
-              <input
-                type="text"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="Nome do convidado"
-                className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-600"
-              />
-              <Button type="submit" disabled={!nameInput.trim()}>
-                Adicionar
-              </Button>
+            <form onSubmit={handleAddName} className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => handleNameInputChange(e.target.value)}
+                  placeholder="Nome do convidado"
+                  aria-invalid={nameError ? true : undefined}
+                  className={cn(
+                    'flex-1 rounded-lg border bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-600',
+                    nameError
+                      ? 'border-amber-500 focus:border-amber-500 focus:ring-amber-500'
+                      : 'border-zinc-300 focus:border-emerald-500 focus:ring-emerald-500 dark:border-zinc-700'
+                  )}
+                />
+                <Button type="submit" disabled={!nameInput.trim()}>
+                  Adicionar
+                </Button>
+              </div>
+              {nameError && (
+                <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
+                  {nameError}
+                </p>
+              )}
             </form>
           </section>
 

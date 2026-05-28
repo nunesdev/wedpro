@@ -17,3 +17,7 @@ export const QUEUE_TIMER_DURATIONS = {
   called: 2 * 60,
   preparing: 5 * 60,
 } as const;
+
+export type JoinQueueResult =
+  | { ok: true }
+  | { ok: false; reason: 'empty' | 'duplicate_name' | 'failed' };

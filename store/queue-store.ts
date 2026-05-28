@@ -2,8 +2,14 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { QueueGuest, QueueSnapshot, QueueStatus } from '@/types/queue.types';
+import type {
+  JoinQueueResult,
+  QueueGuest,
+  QueueSnapshot,
+  QueueStatus,
+} from '@/types/queue.types';
 import { QUEUE_TIMER_DURATIONS } from '@/types/queue.types';
+import { isDuplicateWaitingName } from '@/utils/queue-name';
 
 const STORAGE_KEY = 'ceria-queue-v1';
 
@@ -18,7 +24,7 @@ function createGuest(name: string): QueueGuest {
 interface QueueStoreState extends QueueSnapshot {
   _hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
-  joinQueue: (name: string) => void;
+  joinQueue: (name: string) => JoinQueueResult;
   removeFromQueue: (guestId: string) => void;
   callNext: () => void;
   skip: () => void;
@@ -47,10 +53,17 @@ export const useQueueStore = create<QueueStoreState>()(
 
       joinQueue: (name) => {
         const trimmed = name.trim();
-        if (!trimmed) return;
+        if (!trimmed) return { ok: false, reason: 'empty' };
+
+        const { queue } = get();
+        if (isDuplicateWaitingName(trimmed, queue)) {
+          return { ok: false, reason: 'duplicate_name' };
+        }
+
         set((state) => ({
           queue: [...state.queue, createGuest(trimmed)],
         }));
+        return { ok: true };
       },
 
       removeFromQueue: (guestId) => {

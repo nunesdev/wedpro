@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { JoinQueueResult } from '@/types/queue.types';
+import { isDuplicateWaitingName } from '@/utils/queue-name';
 
 export type BarStatus = 'waiting' | 'called' | 'preparing' | 'completed';
 
@@ -113,8 +115,33 @@ export function useSupabaseSelfBar() {
   }, [activeGuest]);
 
 
-  const joinQueue = async (name: string) => {
-    await supabase.from('bar_requests').insert([{ name, status: 'waiting' }]);
+  const joinQueue = async (name: string): Promise<JoinQueueResult> => {
+    const trimmed = name.trim();
+    if (!trimmed) return { ok: false, reason: 'empty' };
+
+    if (isDuplicateWaitingName(trimmed, queue)) {
+      return { ok: false, reason: 'duplicate_name' };
+    }
+
+    const { data: waitingRows } = await supabase
+      .from('bar_requests')
+      .select('name')
+      .eq('status', 'waiting');
+
+    if (waitingRows && isDuplicateWaitingName(trimmed, waitingRows)) {
+      return { ok: false, reason: 'duplicate_name' };
+    }
+
+    const { error } = await supabase
+      .from('bar_requests')
+      .insert([{ name: trimmed, status: 'waiting' }]);
+
+    if (error) {
+      console.error('Erro ao entrar na fila:', error);
+      return { ok: false, reason: 'failed' };
+    }
+
+    return { ok: true };
   };
 
   const removeFromQueue = async (id: string) => {

@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TimerDisplay } from '@/components/queue/timer-display';
 import { useSupabaseSelfBar } from '@/hooks/useSupabaseSelfBar';
+import { TropicalLottieOverlay } from "@/components/queue/tropical-lottie";
+
+
 import { cn } from '@/utils/cn';
 
 export function QueueMonitor() {
@@ -23,6 +26,9 @@ export function QueueMonitor() {
     if (!document.fullscreenElement) await el.requestFullscreen();
     else await document.exitFullscreen();
   };
+
+  const hasCalledGuest = status === 'called';
+  const emptyQueue = !activeGuest;
 
   const monitorBg =
     status === 'called'
@@ -54,6 +60,8 @@ export function QueueMonitor() {
         monitorBg
       )}
     >
+      <TropicalLottieOverlay isCalled={hasCalledGuest} isEmpty={emptyQueue} />
+
       <div className="absolute top-4 right-4 flex gap-2">
         <button
           type="button"
