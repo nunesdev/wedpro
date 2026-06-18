@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/Header';
+import { GlobalPlayerRoot } from '@/components/GlobalPlayerRoot';
+import { PlayerMainOffset } from '@/components/player-main-offset';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ToastRoot } from '@/components/ToastRoot';
 
@@ -40,7 +42,10 @@ export default function RootLayout({
           <ToastRoot>
             <div className="flex min-h-screen flex-col">
               <Header />
-              <main className="flex-1 px-3 py-4 sm:px-6 sm:py-6">{children}</main>
+              <main className="flex flex-1 flex-col px-3 py-4 sm:px-6 sm:py-6">
+                <PlayerMainOffset>{children}</PlayerMainOffset>
+              </main>
+              <GlobalPlayerRoot />
             </div>
           </ToastRoot>
         </ThemeProvider>

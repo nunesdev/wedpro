@@ -1,10 +1,11 @@
 'use client';
 
 import { create } from 'zustand';
-import type { Block, CalculatedBlock, LayoutMode } from '@/types';
+import type { Block, BlockFormInput, CalculatedBlock, CalculatedTimelineResult, Category, LayoutMode } from '@/types';
 import { TIMELINE_EVENT_ID } from '@/lib/timeline/constants';
 import { supabase } from '@/lib/supabase';
-import { calculateTimeline } from '@/utils/timeline-calculations';
+import { calculateLinearTimeline, calculateTimeline, getChildBlocks } from '@/utils/timeline-calculations';
+import { normalizeBlock, normalizeCategory } from '@/utils/block-helpers';
 import { parseTimeToMinutes } from '@/utils/time-formatter';
 import { dispatchWebPush } from '@/lib/push';
 
@@ -12,6 +13,7 @@ type MutationResult = { ok: true } | { ok: false; error: string };
 
 interface TimelineStoreState {
   blocks: Block[];
+  categories: Category[];
   baseTime: string;
   currentBlockIndex: number;
   layout: LayoutMode;
@@ -30,21 +32,23 @@ interface TimelineStoreState {
   isPending: (key: string) => boolean;
   runWithLoading: <T>(key: string, fn: () => Promise<T>) => Promise<T>;
   getCalculatedTimeline: () => CalculatedBlock[];
+  getCalculatedTimelineResult: () => CalculatedTimelineResult;
 
   fetchSnapshot: () => Promise<void>;
   updateBaseTime: (time: string) => Promise<MutationResult>;
-  addBlock: (title: string, duration: number) => Promise<MutationResult>;
+  addBlock: (input: BlockFormInput) => Promise<MutationResult>;
   removeBlock: (id: string) => Promise<MutationResult>;
   resetOffsets: () => Promise<MutationResult>;
   adjustOffset: (id: string, value: number | 'reset') => Promise<MutationResult>;
   reorderBlocks: (updatedBlocks: Block[]) => Promise<MutationResult>;
   startBlockNow: (targetBlockId: string) => Promise<MutationResult>;
   executeStartBlockNow: (targetBlockId: string) => Promise<void>;
-  updateBlock: (id: string, title: string, duration: number, responsibles: string | null) => Promise<{ ok: boolean; error?: string }>;
+  updateBlock: (id: string, input: BlockFormInput) => Promise<{ ok: boolean; error?: string }>;
 }
 
 export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   blocks: [],
+  categories: [],
   baseTime: '16:00',
   currentBlockIndex: -1,
   layout: 'detailed',
@@ -74,7 +78,9 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
     }
   },
 
-  getCalculatedTimeline: () => calculateTimeline(get().blocks, get().baseTime),
+  getCalculatedTimeline: () => calculateLinearTimeline(get().blocks, get().baseTime),
+
+  getCalculatedTimelineResult: () => calculateTimeline(get().blocks, get().baseTime),
 
   fetchSnapshot: async () => {
     const { data: event } = await supabase
@@ -90,13 +96,29 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
       });
     }
 
+    const { data: fetchedCategories } = await supabase
+      .from('categories')
+      .select('id, name, position')
+      .eq('is_active', true)
+      .order('position', { ascending: true });
+
+    if (fetchedCategories) {
+      set({
+        categories: fetchedCategories.map((row) =>
+          normalizeCategory(row as Record<string, unknown>)
+        ),
+      });
+    }
+
     const { data: fetchedBlocks } = await supabase
       .from('blocks')
-      .select('*')
+      .select('*, category:categories(id, name, position)')
       .eq('event_id', TIMELINE_EVENT_ID)
       .order('position', { ascending: true });
 
-    if (fetchedBlocks) set({ blocks: fetchedBlocks });
+    if (fetchedBlocks) {
+      set({ blocks: fetchedBlocks.map((row) => normalizeBlock(row as Record<string, unknown>)) });
+    }
   },
 
   updateBaseTime: async (time) => {
@@ -116,12 +138,17 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
     return { ok: true };
   },
 
-  addBlock: async (title, duration) => {
+  addBlock: async (input) => {
     const blocks = get().blocks;
     const { error } = await supabase.from('blocks').insert({
       event_id: TIMELINE_EVENT_ID,
-      title,
-      duration,
+      title: input.title,
+      duration: input.duration,
+      responsibles: input.responsibles,
+      parent_id: input.parent_id,
+      category_id: input.category_id,
+      item_type: input.item_type,
+      metadata: input.metadata ?? {},
       position: blocks.length,
       time_offset: 0,
     });
@@ -131,8 +158,14 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   },
 
   removeBlock: async (id) => {
-    const { error } = await supabase.from('blocks').delete().eq('id', id);
-    if (error) return { ok: false, error: error.message };
+    const children = getChildBlocks(get().blocks, id);
+    const idsToRemove = [id, ...children.map((child) => child.id)];
+
+    for (const blockId of idsToRemove) {
+      const { error } = await supabase.from('blocks').delete().eq('id', blockId);
+      if (error) return { ok: false, error: error.message };
+    }
+
     return { ok: true };
   },
 
@@ -186,6 +219,11 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
       duration: block.duration,
       time_offset: block.time_offset ?? 0,
       position: index,
+      responsibles: block.responsibles ?? null,
+      parent_id: block.parent_id ?? null,
+      category_id: block.category_id ?? null,
+      item_type: block.item_type ?? 'event',
+      metadata: block.metadata ?? {},
     }));
 
     const { error } = await supabase.from('blocks').upsert(payload);
@@ -194,8 +232,9 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   },
 
   executeStartBlockNow: async (targetBlockId) => {
-    const { blocks } = get();
-    const targetIndex = blocks.findIndex((b) => b.id === targetBlockId);
+    const { blocks, baseTime } = get();
+    const linearBlocks = calculateLinearTimeline(blocks, baseTime);
+    const targetIndex = linearBlocks.findIndex((b) => b.id === targetBlockId);
     if (targetIndex === -1) return;
 
     const nowStr = new Date().toLocaleTimeString('pt-BR', {
@@ -203,8 +242,7 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
       minute: '2-digit',
     });
     const nowInMinutes = parseTimeToMinutes(nowStr);
-    const timeline = calculateTimeline(blocks, get().baseTime);
-    const projectedStartInMinutes = parseTimeToMinutes(timeline[targetIndex].start);
+    const projectedStartInMinutes = parseTimeToMinutes(linearBlocks[targetIndex].start);
     const difference = nowInMinutes - projectedStartInMinutes;
 
     if (targetIndex === 0) {
@@ -213,7 +251,7 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
         .update({ base_time: nowStr })
         .eq('id', TIMELINE_EVENT_ID);
     } else if (difference !== 0) {
-      const previousBlock = blocks[targetIndex - 1];
+      const previousBlock = linearBlocks[targetIndex - 1];
       await supabase
         .from('blocks')
         .update({ time_offset: previousBlock.time_offset + difference })
@@ -229,8 +267,9 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
   startBlockNow: async (targetBlockId) => {
     await get().executeStartBlockNow(targetBlockId);
 
-    const targetIndex = get().blocks.findIndex((b) => b.id === targetBlockId);
-    const nextBlock = get().blocks[targetIndex];
+    const { blocks, baseTime } = get();
+    const linearBlocks = calculateLinearTimeline(blocks, baseTime);
+    const nextBlock = linearBlocks.find((b) => b.id === targetBlockId);
 
     if (nextBlock) {
       await dispatchWebPush({
@@ -243,31 +282,46 @@ export const useTimelineStore = create<TimelineStoreState>((set, get) => ({
     return { ok: true };
   },
 
-  updateBlock: (id: string, title: string, duration: number, responsibles: string | null) => {
+  updateBlock: (id: string, input: BlockFormInput) => {
     return get().runWithLoading(`update:${id}`, async () => {
       try {
         const { error } = await supabase
           .from('blocks')
-          .update({ 
-            title, 
-            duration, 
-            responsibles 
+          .update({
+            title: input.title,
+            duration: input.duration,
+            responsibles: input.responsibles,
+            parent_id: input.parent_id,
+            category_id: input.category_id,
+            item_type: input.item_type,
+            metadata: input.metadata ?? {},
           })
           .eq('id', id);
 
         if (error) throw error;
 
-        // Atualiza o estado local do Zustand na memória para refletir na tela imediatamente
         set((state) => ({
-          blocks: state.blocks.map((b) => 
-            b.id === id ? { ...b, title, duration, responsibles } : b
-          )
+          blocks: state.blocks.map((b) =>
+            b.id === id
+              ? {
+                  ...b,
+                  title: input.title,
+                  duration: input.duration,
+                  responsibles: input.responsibles,
+                  parent_id: input.parent_id,
+                  category_id: input.category_id,
+                  item_type: input.item_type,
+                  metadata: input.metadata,
+                }
+              : b
+          ),
         }));
 
         return { ok: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Erro ao atualizar bloco.';
         console.error('Erro ao atualizar bloco no Supabase:', err);
-        return { ok: false, error: err.message || 'Erro ao atualizar bloco.' };
+        return { ok: false, error: message };
       }
     });
   },

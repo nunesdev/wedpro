@@ -50,6 +50,17 @@ export function useTimelineSync() {
           void fetchSnapshot();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'categories',
+        },
+        () => {
+          void fetchSnapshot();
+        }
+      )
       .subscribe();
 
     return () => {
