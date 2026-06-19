@@ -114,26 +114,36 @@ function HistoryControls({
 }
 
 function LoadMusicButton({ block }: { block: CalculatedBlock }) {
-  const playTrack = usePlayerStore((s) => s.playTrack);
+  const requestPlay = usePlayerStore((s) => s.requestPlay);
+  const requestPause = usePlayerStore((s) => s.requestPause);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaybackActive = usePlayerStore((s) => s.isPlaybackActive);
+  const remoteOnly = usePlayerStore((s) => s.remoteOnly);
   const track = blockToPlayerTrack(block);
   if (!track) return null;
 
-  const isPlaying = currentTrack?.id === block.id;
+  const isActive = currentTrack?.id === block.id && isPlaybackActive;
 
   return (
     <button
       type="button"
-      onClick={() => playTrack(track)}
+      onClick={() => {
+        if (isActive) requestPause(block.id);
+        else requestPlay(track);
+      }}
       className={cn(
         'mt-2 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-        isPlaying
+        isActive
           ? 'border-emerald-400/40 bg-emerald-400/20 text-emerald-300'
           : 'border-emerald-400/20 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20'
       )}
     >
-      {isPlaying ? <Music2 size={16} aria-hidden /> : <PlayCircle size={16} aria-hidden />}
-      {isPlaying ? 'Tocando no player' : 'Carregar Música'}
+      {isActive ? <Music2 size={16} aria-hidden /> : <PlayCircle size={16} aria-hidden />}
+      {isActive
+        ? remoteOnly
+          ? 'A tocar no Host'
+          : 'Tocando no player'
+        : 'Carregar Música'}
     </button>
   );
 }

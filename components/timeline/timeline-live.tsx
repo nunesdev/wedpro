@@ -5,6 +5,7 @@ import { useTimelineStore } from '@/store/timeline-store';
 import { useToast } from '@/components/ToastProvider';
 import LiveView from '@/components/LiveView';
 import { AddBlockFab } from '@/components/timeline/add-block-fab';
+import { HostToggle } from '@/components/timeline/host-toggle';
 import type { OffsetSelectValue } from '@/components/OffsetDropdown';
 import { getLinearBlockIndex } from '@/utils/timeline-calculations';
 
@@ -56,6 +57,7 @@ export function TimelineLive() {
 
   return (
     <div className="pb-20 sm:pb-6">
+      <HostToggle className="mb-4" />
       <LiveView
         layout={layout}
         baseTime={baseTime}

@@ -16,6 +16,9 @@ import { usePlayerStore } from '@/store/player-store';
 import { secondsToMMSS } from '@/utils/time-formatter';
 import { cn } from '@/utils/cn';
 
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
 interface VolumeControlsProps {
   volume: number;
   isMuted: boolean;
@@ -67,6 +70,7 @@ interface LocalAudioControlsUIProps {
   onSeek: (value: number) => void;
   onSeekStart: () => void;
   onSeekEnd: () => void;
+  seekDisabled?: boolean;
 }
 
 function LocalAudioControlsUI({
@@ -77,6 +81,7 @@ function LocalAudioControlsUI({
   onSeek,
   onSeekStart,
   onSeekEnd,
+  seekDisabled = false,
 }: LocalAudioControlsUIProps) {
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -112,7 +117,7 @@ function LocalAudioControlsUI({
             onPointerDown={onSeekStart}
             onPointerUp={onSeekEnd}
             onPointerCancel={onSeekEnd}
-            disabled={duration <= 0}
+            disabled={duration <= 0 || seekDisabled}
             className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 disabled:cursor-not-allowed"
             aria-label="Progresso da música"
           />
@@ -151,14 +156,23 @@ export function GlobalPlayer() {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isOpen = usePlayerStore((s) => s.isOpen);
   const isFloating = usePlayerStore((s) => s.isFloating);
+  const remoteOnly = usePlayerStore((s) => s.remoteOnly);
+  const isPlaybackActive = usePlayerStore((s) => s.isPlaybackActive);
+  const playbackIntent = usePlayerStore((s) => s.playbackIntent);
+  const playbackNonce = usePlayerStore((s) => s.playbackNonce);
+  const audioUnlockNonce = usePlayerStore((s) => s.audioUnlockNonce);
   const closePlayer = usePlayerStore((s) => s.closePlayer);
   const toggleIsFloating = usePlayerStore((s) => s.toggleIsFloating);
+  const requestPlay = usePlayerStore((s) => s.requestPlay);
+  const requestPause = usePlayerStore((s) => s.requestPause);
+  const setPlaybackActive = usePlayerStore((s) => s.setPlaybackActive);
+  const acknowledgePlaybackIntent = usePlayerStore((s) => s.acknowledgePlaybackIntent);
   const dragControls = useDragControls();
   const dragBoundsRef = useRef<HTMLDivElement>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const isSeekingRef = useRef(false);
-  const loadedTrackIdRef = useRef<string | null>(null);
+  const loadedSrcRef = useRef<string | null>(null);
 
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
@@ -168,12 +182,7 @@ export function GlobalPlayer() {
 
   const startTime = currentTrack?.start_time ?? 0;
   const isLocalTrack = currentTrack?.type === 'music_local';
-  const audioSrc =
-    isLocalTrack && currentTrack?.audio_url
-      ? startTime > 0
-        ? `${currentTrack.audio_url}#t=${startTime}`
-        : currentTrack.audio_url
-      : undefined;
+  const audioSrc = isLocalTrack && currentTrack?.audio_url ? currentTrack.audio_url : undefined;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -183,72 +192,189 @@ export function GlobalPlayer() {
 
   useEffect(() => {
     if (!currentTrack) {
-      loadedTrackIdRef.current = null;
+      loadedSrcRef.current = null;
       const audio = audioRef.current;
       if (audio) {
         audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
       }
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
     }
   }, [currentTrack]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !audioSrc || !currentTrack) return;
+    if (!audio || audioUnlockNonce === 0) return;
 
-    if (loadedTrackIdRef.current === currentTrack.id) return;
+    const previousSrc = audio.src;
+    const previousTime = audio.currentTime;
+    const previousVolume = audio.volume;
 
-    loadedTrackIdRef.current = currentTrack.id;
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    audio.src = audioSrc;
+    audio.src = SILENT_WAV;
+    audio.volume = 0;
     audio.load();
-  }, [audioSrc, currentTrack]);
+
+    void audio
+      .play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      })
+      .catch(() => {
+        /* autoplay policy may block until user gesture */
+      })
+      .finally(() => {
+        if (previousSrc) {
+          audio.src = previousSrc;
+          audio.currentTime = previousTime;
+        } else {
+          audio.removeAttribute('src');
+          audio.load();
+        }
+        audio.volume = previousVolume;
+      });
+  }, [audioUnlockNonce]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !isLocalTrack) return;
 
-    const onLoadedMetadata = () => {
-      const total = Number.isFinite(audio.duration) ? audio.duration : 0;
-      setDuration(total);
-
-      const initialTime = startTime > 0 ? Math.min(startTime, total || startTime) : 0;
-      if (initialTime > 0) {
-        audio.currentTime = initialTime;
-      }
-      setCurrentTime(audio.currentTime);
-      audio.volume = isMuted ? 0 : volume;
-
-      void audio.play().catch(() => setIsPlaying(false));
-    };
-
     const onTimeUpdate = () => {
-      if (!isSeekingRef.current) {
+      if (!isSeekingRef.current && !remoteOnly) {
         setCurrentTime(audio.currentTime);
       }
     };
 
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onEnded = () => setIsPlaying(false);
+    const onPlay = () => {
+      if (!remoteOnly) setIsPlaying(true);
+    };
+    const onPause = () => {
+      if (!remoteOnly) setIsPlaying(false);
+    };
+    const onEnded = () => {
+      if (!remoteOnly) {
+        setIsPlaying(false);
+        setPlaybackActive(false);
+      }
+    };
 
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     audio.addEventListener('ended', onEnded);
 
     return () => {
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [isLocalTrack, startTime, volume, isMuted]);
+  }, [isLocalTrack, remoteOnly, setPlaybackActive]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrack || !isLocalTrack || !audioSrc) return;
+
+    if (playbackIntent === 'pause') {
+      audio.pause();
+      setIsPlaying(false);
+      acknowledgePlaybackIntent();
+      return;
+    }
+
+    if (playbackIntent !== 'play') return;
+
+    let cancelled = false;
+
+    const applyStartTime = () => {
+      const total = Number.isFinite(audio.duration) ? audio.duration : 0;
+      setDuration(total);
+      const initialTime = startTime > 0 ? Math.min(startTime, total || startTime) : 0;
+      audio.currentTime = initialTime;
+      setCurrentTime(initialTime);
+      return initialTime;
+    };
+
+    const run = async () => {
+      const mustReload = loadedSrcRef.current !== audioSrc;
+      if (mustReload) {
+        loadedSrcRef.current = audioSrc;
+        audio.src = audioSrc;
+        audio.load();
+      }
+
+      const startPlayback = async () => {
+        if (cancelled) return;
+        applyStartTime();
+        audio.volume = isMuted ? 0 : volume;
+
+        if (remoteOnly) {
+          setIsPlaying(isPlaybackActive);
+          acknowledgePlaybackIntent();
+          return;
+        }
+
+        try {
+          await audio.play();
+          setIsPlaying(true);
+          setPlaybackActive(true);
+        } catch {
+          setIsPlaying(false);
+          setPlaybackActive(false);
+        } finally {
+          acknowledgePlaybackIntent();
+        }
+      };
+
+      if (audio.readyState >= 1) {
+        await startPlayback();
+        return;
+      }
+
+      const onLoadedMetadata = () => {
+        void startPlayback();
+      };
+
+      audio.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    playbackNonce,
+    playbackIntent,
+    currentTrack,
+    isLocalTrack,
+    audioSrc,
+    startTime,
+    remoteOnly,
+    isPlaybackActive,
+    volume,
+    isMuted,
+    acknowledgePlaybackIntent,
+    setPlaybackActive,
+  ]);
+
+  useEffect(() => {
+    if (!remoteOnly || !isLocalTrack) return;
+    setIsPlaying(isPlaybackActive);
+  }, [remoteOnly, isLocalTrack, isPlaybackActive]);
 
   const togglePlayPause = useCallback(() => {
+    if (!currentTrack) return;
+
+    if (remoteOnly) {
+      if (isPlaybackActive) requestPause(currentTrack.id);
+      else requestPlay(currentTrack);
+      return;
+    }
+
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -257,15 +383,20 @@ export function GlobalPlayer() {
     } else {
       audio.pause();
     }
-  }, []);
+  }, [currentTrack, remoteOnly, isPlaybackActive, requestPause, requestPlay]);
 
-  const handleSeek = useCallback((value: number) => {
-    const audio = audioRef.current;
-    if (!audio || !Number.isFinite(value)) return;
+  const handleSeek = useCallback(
+    (value: number) => {
+      if (remoteOnly) return;
 
-    audio.currentTime = value;
-    setCurrentTime(value);
-  }, []);
+      const audio = audioRef.current;
+      if (!audio || !Number.isFinite(value)) return;
+
+      audio.currentTime = value;
+      setCurrentTime(value);
+    },
+    [remoteOnly]
+  );
 
   const handleVolumeChange = (value: number) => {
     setVolume(value);
@@ -287,9 +418,14 @@ export function GlobalPlayer() {
   const playerContent = currentTrack && (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
-          {currentTrack.title}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-neutral-100">{currentTrack.title}</p>
+          {remoteOnly && (
+            <p className="mt-0.5 text-[11px] font-medium text-amber-400/90">
+              Controlo remoto — áudio no Host
+            </p>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
@@ -312,7 +448,7 @@ export function GlobalPlayer() {
       </div>
 
       <div className="min-h-0 min-w-0 flex-1">
-        {currentTrack.type === 'music_spotify' && currentTrack.spotify_uri && (
+        {currentTrack.type === 'music_spotify' && currentTrack.spotify_uri && !remoteOnly && (
           <iframe
             src={`https://open.spotify.com/embed/track/${currentTrack.spotify_uri}?utm_source=generator&theme=0`}
             width="100%"
@@ -322,6 +458,12 @@ export function GlobalPlayer() {
             className="h-20 w-full rounded-lg border border-neutral-700"
             title={`Spotify: ${currentTrack.title}`}
           />
+        )}
+
+        {currentTrack.type === 'music_spotify' && remoteOnly && (
+          <p className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-4 text-center text-xs text-neutral-400">
+            Faixa Spotify enviada para o Host
+          </p>
         )}
 
         {isLocalTrack && audioSrc && (
@@ -337,11 +479,12 @@ export function GlobalPlayer() {
             onSeekEnd={() => {
               isSeekingRef.current = false;
             }}
+            seekDisabled={remoteOnly}
           />
         )}
       </div>
 
-      {isLocalTrack && (
+      {isLocalTrack && !remoteOnly && (
         <VolumeControls
           volume={volume}
           isMuted={isMuted}
